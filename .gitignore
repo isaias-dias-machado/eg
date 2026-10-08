@@ -1,0 +1,34 @@
+# Virtual environments
+.venv/
+venv/
+pyvenv.cfg
+/bin/
+/include/
+/lib/
+/lib64
+
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Testing and tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local configuration
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+.vscode/

@@ -1,0 +1,42 @@
+Processes {
+  processP
+  processQ
+  processR
+}
+
+Events {
+  persist
+  send := "Send event %succession" // %succession is replaced by a monotonic id, %1 uses the first argument 
+  recv := "Recv event"
+}
+
+// E eu quiser representar que uma mensagem foi perdida
+Messages {
+  write :: send -> recv :: "Write"
+  ack   :: send -> recv :: "Ack"
+}
+
+History {
+  event_1 := ProcessP -> ProcessQ :: send.write
+  event_2 := ProcessQ -> ProcessQ :: event_1.recv
+  event_3 := ProcessQ -> ProcessQ :: send.ack
+}
+
+
+=========
+
+start : keyword
+
+keyword : EVENTS "{"  "}"
+        | PROCESSES "{" id_list "}"
+        | MESSAGES  "{"  "}"
+        | HISTORY 
+
+id_list: IDENTIFIER
+       | id_list "\n"
+
+EVENTS: "events"
+PROCESSES: "processes"
+MESSAGES: "messages"
+HISTORY: "history"
+IDENTIFIER: /[a-z][a-zA-Z0-9_]*/
