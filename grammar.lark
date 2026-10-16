@@ -1,0 +1,88 @@
+// --------------------------------------------------------------------------
+// Program structure
+// -------------------------------------------------------------------------- */
+
+start            : block_list
+
+block_list         : _newlines block _newlines block_list _newlines
+                     |
+
+block              : processes_block
+                     | messages_block
+                     | history_block
+
+// --------------------------------------------------------------------------
+// Blocks
+// -------------------------------------------------------------------------- */
+
+processes_block    : "Processes" "{" _newlines process_decl_list "}"
+
+process_decl_list  : process_name _newlines process_decl_list
+                     |
+
+messages_block     : "Messages" "{" _newlines message_decl_list _newlines "}"
+
+message_decl_list  : message_decl _newlines message_decl_list
+                     |
+
+message_decl       : message_name ":=" STRING
+
+history_block      : "History" "{" _newlines event_list _newlines "}"
+
+event_list         : event event_list
+                     |
+
+// --------------------------------------------------------------------------
+// History events
+// -------------------------------------------------------------------------- */
+
+event              : send_event _newlines
+                   | recv_event _newlines
+
+//  Send — e.g.
+//      m2 := Send(ack) :: q -> p, q, r
+//  Binds the event name to the sending of a declared message by a
+//  declared process to every process in the target list; a target
+//  list with several names denotes a multicast.                        */
+
+send_event         : event_name ":=" "Send" "(" message_name ")" "::" process_name "->" process_list
+
+//  Recv — e.g.
+//      Recv m1 :: q
+//      Recv.m1 :: q        (equivalent dotted spelling)
+//      Recv m2 :: p, q     (sugar for `Recv m2 :: p` and `Recv m2 :: q`)
+//  Records that every process in the list received the message bound
+//  to the referenced event.                                             */
+
+recv_event         : "Recv" recv_ref "::" process_list
+
+recv_ref           : event_name
+                     | "." event_name
+
+process_list       : process_name "," process_list
+                     | process_name
+
+//  All three name spaces are plain identifiers syntactically.            */
+
+process_name       : IDENTIFIER
+message_name       : IDENTIFIER
+event_name         : IDENTIFIER
+
+// --------------------------------------------------------------------------
+// Lexical syntax
+// -------------------------------------------------------------------------- */
+
+//  String literal — a double-quoted sequence of characters.  Any
+//  character may appear between the quotes except the double quote
+//  itself and a line terminator; there are no escape sequences.        */
+
+
+
+_newlines : _NL _newlines
+          |
+
+_NL : /\r?\n/
+STRING : /".*?"/
+IDENTIFIER : /[a-z][a-zA-Z0-9_]*/
+
+%ignore /[ \t]/
