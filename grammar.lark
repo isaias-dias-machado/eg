@@ -4,8 +4,7 @@
 
 start            : block_list
 
-block_list         : _newlines block _newlines block_list _newlines
-                     |
+block_list         : (_newlines block _newlines)*
 
 block              : processes_block
                      | messages_block
@@ -17,20 +16,17 @@ block              : processes_block
 
 processes_block    : _PROCESSES "{" _newlines process_decl_list "}"
 
-process_decl_list  : process_name _newlines process_decl_list
-                     |
+process_decl_list  : (process_name _newlines)+
 
 messages_block     : _MESSAGES "{" _newlines message_decl_list _newlines "}"
 
-message_decl_list  : message_decl _newlines message_decl_list
-                     |
+message_decl_list  : (message_decl _newlines)+
 
 message_decl       : message_name _DEFINED STRING
 
 history_block      : _HISTORY "{" _newlines event_list _newlines "}"
 
-event_list         : event event_list
-                     |
+event_list         : (event)*
 
 // --------------------------------------------------------------------------
 // History events
@@ -56,8 +52,7 @@ send_event         : event_name _DEFINED _SEND "(" message_name ")" _IN process_
 
 recv_event         : "Recv" "(" message_name ")" _IN process_list
 
-process_list       : process_name "," process_list
-                     | process_name
+process_list       : process_name ("," process_name)*
 
 //  All three name spaces are plain identifiers syntactically.            */
 
