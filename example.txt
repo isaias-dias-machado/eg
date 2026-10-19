@@ -1,42 +1,52 @@
 Processes {
-  processP
-  processQ
-  processR
+  p
+  q
+  r
+}
+
+// What is I want to represent a message that was sent but dropped?
+Messages {
+  request := "Request o que quiser"
+  ack := "Ack"
+  vote := "Votes for leader"
+} 
+
+// :: reads "in"
+// -> reads "to"
+History {
+  m1 := Send(request) :: p -> q
+  Recv m1 :: q
+
+  m2 := Send(ack) :: q -> p, q, r
+  Recv m2 :: p                      // Sugar: `Recv m2 :: p, q`
+  Recv m2 :: q
+
+  m3 := Send(request) :: r -> q
+  Recv.m2 :: r
+}
+
+====================
+
+Processes {
+  p
+  q
+  r
 }
 
 Events {
-  persist
-  send := "Send event %succession" // %succession is replaced by a monotonic id, %1 uses the first argument 
-  recv := "Recv event"
+  timeout := "Timeout"
+  commit  := "Commit"
 }
 
-// E eu quiser representar que uma mensagem foi perdida
 Messages {
-  write :: send -> recv :: "Write"
-  ack   :: send -> recv :: "Ack"
+  request := "Request"
+  ack := "Acknowledgment"
 }
 
 History {
-  event_1 := ProcessP -> ProcessQ :: send.write
-  event_2 := ProcessQ -> ProcessQ :: event_1.recv
-  event_3 := ProcessQ -> ProcessQ :: send.ack
+  e1 := send.request :: p -> q, r
+  e2 := e1.recv :: q
+  timeout :: r                      // Or: `e3 := timeout :: r`
+  e4 := e1.recv :: r
+  e5 := send.ack :: q -> p
 }
-
-
-=========
-
-start : keyword
-
-keyword : EVENTS "{"  "}"
-        | PROCESSES "{" id_list "}"
-        | MESSAGES  "{"  "}"
-        | HISTORY 
-
-id_list: IDENTIFIER
-       | id_list "\n"
-
-EVENTS: "events"
-PROCESSES: "processes"
-MESSAGES: "messages"
-HISTORY: "history"
-IDENTIFIER: /[a-z][a-zA-Z0-9_]*/
