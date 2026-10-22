@@ -2,11 +2,11 @@
 // Program structure
 // -------------------------------------------------------------------------- */
 
-start            : block_list
+start            : _block_list
 
-block_list         : (_newlines block _newlines)*
+_block_list         : (_newlines _block _newlines)*
 
-block              : processes_block
+_block              : processes_block
                      | messages_block
                      | history_block
 
@@ -14,19 +14,19 @@ block              : processes_block
 // Blocks
 // -------------------------------------------------------------------------- */
 
-processes_block    : _PROCESSES "{" _newlines process_decl_list "}"
+processes_block    : _PROCESSES "{" _newlines _process_decl_list "}"
 
-process_decl_list  : (process_name _newlines)*
+_process_decl_list  : (process_name _newlines)*
 
-messages_block     : _MESSAGES "{" _newlines message_decl_list _newlines "}"
+messages_block     : _MESSAGES "{" _newlines _message_decl_list _newlines "}"
 
-message_decl_list  : (message_decl _newlines)*
+_message_decl_list  : (message_decl _newlines)*
 
 message_decl       : message_name _DEFINED STRING
 
-history_block      : _HISTORY "{" _newlines event_list _newlines "}"
+history_block      : _HISTORY "{" _newlines _event_list _newlines "}"
 
-event_list         : (event)*
+_event_list         : (event)*
 
 // --------------------------------------------------------------------------
 // History events
