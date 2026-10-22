@@ -16,11 +16,11 @@ block              : processes_block
 
 processes_block    : _PROCESSES "{" _newlines process_decl_list "}"
 
-process_decl_list  : (process_name _newlines)+
+process_decl_list  : (process_name _newlines)*
 
 messages_block     : _MESSAGES "{" _newlines message_decl_list _newlines "}"
 
-message_decl_list  : (message_decl _newlines)+
+message_decl_list  : (message_decl _newlines)*
 
 message_decl       : message_name _DEFINED STRING
 
