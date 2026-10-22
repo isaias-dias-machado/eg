@@ -1,5 +1,7 @@
 from typing import Set
 
+from dataclasses import dataclass
+
 from lark import Lark, UnexpectedInput
 from lark.visitors import Interpreter
 import pathlib
@@ -26,26 +28,47 @@ History {
 }
 """
 
-process_declarations = set()
-message_declarations: dict[str, str] = dict()
+# class SemanticState:
+#     def __init(self):
+#         self.process_declarations = set()
+#         self.message_declarations: dict[str, str] = dict()
 
 class TreeInt(Interpreter):
+    def __init__(self, log = None):
+        super().__init__()
+        self.scopes = [{}]
+        self.depth = 0
+        self.log = log or (lambda msg: None)    # pass print to enable tracing
+
+    def visit(self, tree):
+        self.log(f"{'  ' * self.depth}> {tree.data} @{getattr(tree.meta, 'line', '?')}")
+        self.depth += 1
+        before = len(self.scopes)
+        try:
+            result = super().visit(tree)
+        finally:
+            self.depth -= 1
+            if len(self.scopes) != before:
+                raise RuntimeError(f"scope leak in {tree.data}: push without pop")
+        self.log(f"{'  ' * self.depth}< {tree.data} = {result!r}")
+        return result
+        
     def processes_block(self, tree):
         for d in tree.children:
-            process_declarations.add(d.children[0].value)
-
-    def messages_block(self, tree):
-        node1, node2 = tree.children[0].children
-        message_name = node1.children[0].value
-        name_string = node2.value
-        message_declarations[message_name] = name_string
+            return d.children[0].value
+    #
+    # def messages_block(self, tree):
+    #     node1, node2 = tree.children[0].children
+    #     message_name = node1.children[0].value
+    #     name_string = node2.value
+    #     self.state.message_declarations[message_name] = name_string
 
 try:
     parser = Lark(grammar)
     tree = parser.parse(ex)
-    TreeInt().visit(tree)
-    print(process_declarations)
-    print(message_declarations)
+    TreeInt(log=print).visit(tree)
+    # print(process_declarations)
+    # print(message_declarations)
     print(tree.pretty())
 except UnexpectedInput as e:
     print(e)
