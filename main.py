@@ -1,4 +1,7 @@
+from typing import Set
+
 from lark import Lark, UnexpectedInput
+from lark.visitors import Interpreter
 import pathlib
 import os
 
@@ -23,9 +26,27 @@ History {
 }
 """
 
+process_declarations = set()
+message_declarations: dict[str, str] = dict()
+
+class TreeInt(Interpreter):
+    def processes_block(self, tree):
+        for d in tree.children:
+            process_declarations.add(d.children[0].value)
+
+    def messages_block(self, tree):
+        node1, node2 = tree.children[0].children
+        message_name = node1.children[0].value
+        name_string = node2.value
+        message_declarations[message_name] = name_string
+
 try:
     parser = Lark(grammar)
-    print(parser.parse(ex).pretty())
+    tree = parser.parse(ex)
+    TreeInt().visit(tree)
+    print(process_declarations)
+    print(message_declarations)
+    print(tree.pretty())
 except UnexpectedInput as e:
     print(e)
     exit(1)
