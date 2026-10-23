@@ -37,87 +37,63 @@ pytest -q
 
 ## Linguagem para escrever lamport space-time diagrams
 
-Example of the DSL at `example.txt`
-
-Resulta em:
-
-```dot
-digraph Events {
-  graph [layout=neato, splines=line, overlap=true];
-  node [shape=point, width=0.09, fontname="Helvetica"];
-  edge [arrowsize=0.7];
-
-  node [shape=plaintext];
-  P [label="ProcessP", pos="0,4!"];
-  Q [label="ProcessQ", pos="2,4!"];
-  R [label="ProcessR", pos="4,4!"];
-
-  node [shape=point, width=0, style=invis];
-  Pbot [pos="0,0!"]; Ptop [pos="0,3.7!"];
-  Qbot [pos="2,0!"]; Qtop [pos="2,3.7!"];
-  Rbot [pos="4,0!"]; Rtop [pos="4,3.7!"];
-
-  node [shape=point, width=0.09, style=solid];
-  p1 [pos="0,3.5!", xlabel="event1"];
-  p2 [pos="2,3!", xlabel="event2"];
-
-  // lifelines
-  edge [color=black, arrowhead=none];
-  Ptop -> p1 -> Pbot
-  Qtop -> p2 -> Qbot
-  Rtop -> Rbot
-
-  // messages
-  edge [color=blue, arrowhead=normal];
-  p1 -> p2 [label="m1"]
-
+Example:
+```
+Processes {
+  p
+  q
+  r
 }
 
-```
+Messages {
+  request := "Request o que quiser"
+  ack := "Ack"
+  vote := "Votes for leader"
+}
 
+History {
+  m1 := Send(request) :: p -> q
+  Recv(m1) :: q
 
-```dot
-digraph Events {
-  graph [layout=neato, splines=line, overlap=true];
-  node [shape=point, width=0.09, fontname="Helvetica"];
-  edge [arrowsize=0.7];
+  m2 := Send(ack) :: q -> p, q, r
+  Recv(m2) :: p, q
 
-  // Process labels and timeline endpoints
-  node [shape=plaintext];
-  P [label="Process P", pos="0,4!"];
-  Q [label="Process Q", pos="3,4!"];
-  R [label="Process R", pos="6,4!"];
-
-  node [shape=point, width=0, style=invis];
-  P0 [pos="0,0!"]; Ptop [pos="0,3.7!"];
-  Q0 [pos="3,0!"]; Qtop [pos="3,3.7!"];
-  R0 [pos="6,0!"]; Rtop [pos="6,3.7!"];
-
-  // Six events: one send and one receive per message
-  node [shape=point, width=0.09, style=solid];
-  p1 [pos="0,0.5!", xlabel="p₁"];
-  p2 [pos="0,3.2!", xlabel="p₂"];
-  q1 [pos="3,0.8!", xlabel="q₁"];
-  q2 [pos="3,2.5!", xlabel="q₂"];
-  r1 [pos="6,0.5!", xlabel="r₁"];
-  r2 [pos="6,3.2!", xlabel="r₂"];
-
-  // Local process timelines: time flows upward
-  edge [color=black, arrowhead=none];
-  P0 -> p1 -> p2;
-  Q0 -> q1 -> q2;
-  R0 -> r1 -> r2;
-
-  edge [arrowhead=normal];
-  p2 -> Ptop;
-  q2 -> Qtop;
-  r2 -> Rtop;
-
-  // Three messages
-  edge [color="#2563eb", fontcolor="#2563eb",
-        fontname="Helvetica", penwidth=1.5];
-  p1 -> q2 [label="m₁"];
-  q1 -> r2 [label="m₂"];
-  r1 -> p2 [label="m₃"];
+  m3 := Send(request) :: r -> q
+  Recv(m3) :: q
 }
 ```
+
+
+Results in:
+
+<svg viewBox="0 0 360 320" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif">
+	<defs>
+		<marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+			<path d="M0 0 L10 5 L0 10 z" fill="#d93025"/>
+		</marker>
+		<marker id="t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+			<path d="M0 0 L10 5 L0 10 z" fill="#555"/>
+		</marker>
+	</defs>
+	<line x1="80" y1="48" x2="80" y2="285" stroke="#555" stroke-width="1.5" marker-end="url(#t)"/>
+	<line x1="180" y1="48" x2="180" y2="285" stroke="#555" stroke-width="1.5" marker-end="url(#t)"/>
+	<line x1="280" y1="48" x2="280" y2="285" stroke="#555" stroke-width="1.5" marker-end="url(#t)"/>
+	<text x="80" y="40" text-anchor="middle" font-size="13" font-weight="bold">p</text>
+	<text x="180" y="40" text-anchor="middle" font-size="13" font-weight="bold">q</text>
+	<text x="280" y="40" text-anchor="middle" font-size="13" font-weight="bold">r</text>
+	<line x1="85" y1="90" x2="175" y2="128" stroke="#d93025" stroke-width="1.5" marker-end="url(#a)"/>
+	<text x="125" y="98" font-size="11" fill="#d93025" font-style="italic">request</text>
+	<line x1="175" y1="165" x2="85" y2="208" stroke="#d93025" stroke-width="1.5" marker-end="url(#a)"/>
+	<text x="118" y="178" font-size="11" fill="#d93025" font-style="italic">ack</text>
+	<path d="M 186 168 C 218 172, 218 204, 186 208" fill="none" stroke="#d93025" stroke-width="1.5" marker-end="url(#a)"/>
+	<line x1="185" y1="165" x2="272" y2="165" stroke="#d93025" stroke-width="1.5" stroke-dasharray="4 3" marker-end="url(#a)"/>
+	<line x1="285" y1="250" x2="185" y2="268" stroke="#d93025" stroke-width="1.5" marker-end="url(#a)"/>
+	<text x="235" y="252" font-size="11" fill="#d93025" font-style="italic">request</text>
+	<circle cx="80" cy="90" r="5" fill="#1a73e8"/>
+	<circle cx="180" cy="130" r="5" fill="#1a73e8"/>
+	<circle cx="180" cy="165" r="5" fill="#1a73e8"/>
+	<circle cx="80" cy="210" r="5" fill="#1a73e8"/>
+	<circle cx="180" cy="210" r="5" fill="#1a73e8"/>
+	<circle cx="280" cy="250" r="5" fill="#1a73e8"/>
+	<circle cx="180" cy="270" r="5" fill="#1a73e8"/>
+</svg>
