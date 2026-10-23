@@ -2,6 +2,22 @@
 
 run `./setup.sh` to install the python venv and dependencies
 
+## Running
+
+Compile a DSL file and print the refined AST:
+
+```bash
+source .venv/bin/activate
+python main.py example.txt
+```
+
+Run the test suite:
+
+```bash
+source .venv/bin/activate
+pytest -q
+```
+
 ## Linguagem para escrever lamport space-time diagrams
 
 Example of the DSL at `example.txt`

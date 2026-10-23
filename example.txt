@@ -4,49 +4,19 @@ Processes {
   r
 }
 
-// What is I want to represent a message that was sent but dropped?
 Messages {
   request := "Request o que quiser"
   ack := "Ack"
   vote := "Votes for leader"
-} 
+}
 
-// :: reads "in"
-// -> reads "to"
 History {
   m1 := Send(request) :: p -> q
-  Recv m1 :: q
+  Recv(m1) :: q
 
   m2 := Send(ack) :: q -> p, q, r
-  Recv m2 :: p                      // Sugar: `Recv m2 :: p, q`
-  Recv m2 :: q
+  Recv(m2) :: p, q
 
   m3 := Send(request) :: r -> q
-  Recv.m2 :: r
-}
-
-====================
-
-Processes {
-  p
-  q
-  r
-}
-
-Events {
-  timeout := "Timeout"
-  commit  := "Commit"
-}
-
-Messages {
-  request := "Request"
-  ack := "Acknowledgment"
-}
-
-History {
-  e1 := send.request :: p -> q, r
-  e2 := e1.recv :: q
-  timeout :: r                      // Or: `e3 := timeout :: r`
-  e4 := e1.recv :: r
-  e5 := send.ack :: q -> p
+  Recv(m3) :: q
 }

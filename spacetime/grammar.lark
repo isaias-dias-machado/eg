@@ -45,12 +45,12 @@ send_event         : event_identifier _DEFINED _SEND "(" message_identifier ")" 
 
 //  Recv — e.g.
 //      Recv(m1) :: q
-//      Recv(m1) :: q        (equivalent dotted spelling)
-//      Recv(m2) :: p, q     (sugar for `Recv m2 :: p` and `Recv m2 :: q`)
+//      Recv(m2) :: p, q
 //  Records that every process in the list received the message bound
-//  to the referenced event.                                             */
+//  to the referenced event.  This version keeps a multi-process receive
+//  as one history event; it does not expand it into separate events.    */
 
-recv_event         : "Recv" "(" event_identifier ")" _IN process_list
+recv_event         : _RECV "(" event_identifier ")" _IN process_list
 
 process_list       : process_identifier ("," process_identifier)*
 
@@ -60,7 +60,6 @@ process_declaration : IDENTIFIER
 message_name : IDENTIFIER
 message_identifier : IDENTIFIER
 message_value      : STRING
-event_name         : IDENTIFIER
 event_identifier   : IDENTIFIER
 process_identifier : IDENTIFIER
 
