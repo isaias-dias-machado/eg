@@ -1,6 +1,13 @@
 ## Setup
 
-run `./setup.sh` to install the python venv and dependencies
+Requires Python 3.10 or newer (developed and tested on 3.13).
+
+Run `./setup.sh` to create the virtual environment and install dependencies.
+
+The environment lives **only** in `.venv/`. Do not create one in place at the
+repository root (`python3 -m venv .`): `setup.sh` refuses to run in that
+situation, and the stray `bin/`, `lib/`, `include/` and `pyvenv.cfg` would
+shadow the real environment.
 
 ## Running
 

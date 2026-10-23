@@ -1,11 +1,10 @@
 # Virtual environments
+# The only supported location is .venv/, created by ./setup.sh.
+# A venv created in place at the repo root is NOT ignored on purpose:
+# it shows up in `git status` so it gets removed instead of hidden.
 .venv/
 venv/
-pyvenv.cfg
-/bin/
-/include/
-/lib/
-/lib64
+env/
 
 
 # Python bytecode
