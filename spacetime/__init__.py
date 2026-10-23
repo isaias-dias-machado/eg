@@ -1,3 +1,9 @@
+"""Space-Time DSL: compile a message history into a refined AST.
+
+The public surface is re-exported here; see ``__all__``. Typical use is
+:func:`compile_source` or :func:`compile_file`.
+"""
+
 from .ast import (
     Ast,
     History,
