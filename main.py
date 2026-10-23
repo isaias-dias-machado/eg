@@ -9,6 +9,8 @@ from lark.visitors import Interpreter
 import pathlib
 import os
 
+import pprint
+
 grammar = pathlib.Path('grammar.lark').read_text()
 
 ex = """
@@ -65,12 +67,31 @@ class Ast:
     message_declarations: dict[str, str]
     history: History
 
+def print_ast(ast: Ast):
+    print(f"Ast")
+    print("\tprocess_declarations")
+    [print("\t\t", dec) for dec in ast.process_declarations]
+    print("\tmessage_declarations")
+    [print("\t\t", key, ":", value) for key, value in ast.message_declarations.items()]
+    print("\thistory")
+    print("\t\tevent_number", ast.history.num_events)
+    for item in ast.history.events:
+        print("\t\t", end="")
+        pprint.pp(item)
+
 class BranchKind(Enum):
     PROCESSES = 0
     MESSAGES = 1
     HISTORY = 2
 
+class SemanticError(Exception):
+    def __init__(self, message, node=None):
+        self.node = node
+        super().__init__(message)
+
+
 # A first normaliztion pass is done to allow blocks to be declared in any order
+# Validations performed here: repeated process and message declarations
 class AstNormalizer(Interpreter):
     def __init__(self):
         self.temporal_pos_counter = 0
@@ -98,7 +119,14 @@ class AstNormalizer(Interpreter):
         )
 
     def processes_block(self, tree) -> tuple[BranchKind, set[str]]:
-        set_of_proc_declarations = set([self.visit(child) for child in tree.children])
+        set_of_proc_declarations = set()
+        for child in tree.children:
+            declaration = self.visit(child)
+            if declaration in set_of_proc_declarations:
+                raise SemanticError(f"duplicate process declaration: '{declaration}'")
+            else:
+                set_of_proc_declarations.add(declaration)
+
         return (BranchKind.PROCESSES, set_of_proc_declarations)
         
     def history_block(self, tree):
@@ -107,7 +135,12 @@ class AstNormalizer(Interpreter):
         return (BranchKind.HISTORY, History(event_number, event_list))
 
     def messages_block(self, tree) -> tuple[BranchKind, dict[str, str]]:
-        declarations = dict([self.visit(tuples_in_child) for tuples_in_child in tree.children])
+        declarations: dict[str, str] = {}
+        for child in tree.children:
+            key, value = self.visit(child)
+            if key in declarations:
+                raise SemanticError(f"duplicate message declaration: '{key}'")
+            declarations[key] = value
         return (BranchKind.MESSAGES, declarations)
 
     def process_declaration(self, tree) -> str:
@@ -137,7 +170,10 @@ class AstNormalizer(Interpreter):
     def process_list(self, tree) -> list[str]:
         return [self.visit(child) for child in tree.children]
 
-    def send_event(self, tree):
+    def event(self, tree) -> SendEvent | RecvEvent:
+        return self.visit(tree.children[0])
+
+    def send_event(self, tree) -> SendEvent:
         temporal_pos = self.temporal_pos_counter
         self.temporal_pos_counter += 1
         name, message_id, process_from_id, process_to_ids = self.visit_children(tree)
@@ -149,13 +185,69 @@ class AstNormalizer(Interpreter):
         send_event_ref, process_ids = self.visit_children(tree)
         return RecvEvent(temporal_pos, send_event_ref, process_ids)
 
+@dataclass
+class RecvEventRefined:
+    temporal_pos: int
+    related_send_event: SendEvent
+    process_ids: list[str]
+
+@dataclass
+class SendEventRefined:
+    temporal_pos: int
+    message: str
+    process_from_id: str
+    processes_to_ids: list[str]
+
+@dataclass
+class HistoryRefined:
+    num_events: int
+    events: list[SendEvent | RecvEventRefined]
+
+@dataclass
+class RefinedAst:
+    process_declarations: set[str]
+    history: HistoryRefined
+
+
+# TODO: create a DuplicatedReferenceError that extands SemanticError standardizes the message
+def create_refined_ast(ast: Ast) -> RefinedAst:
+    send_events: dict[str, SendEventRefined] = {}
+    refined_events = []
+    for event in ast.history.events:
+        match event:
+            case SendEvent(temporal_pos, name, message_id, process_from_id, processes_to_ids):
+                if name in send_events:
+                    raise SemanticError(f"duplicate event declaration: '{name}'")
+                else:
+                    refined_event = SendEventRefined(temporal_pos, ast.message_declarations[message_id], process_from_id, processes_to_ids)
+                    send_events[name] = refined_event
+                    refined_events.append(refined_event)
+            case RecvEvent(temporal_pos, send_event_ref, process_ids):
+                if send_event_ref not in send_events:
+                    raise SemanticError(f"undeclared reference: '{send_event_ref}'")
+                else:
+                    refined_events.append(RecvEventRefined(temporal_pos, send_events[send_event_ref], process_ids))
+        
+    return RefinedAst(ast.process_declarations, HistoryRefined(ast.history.num_events, refined_events))
+
+def print_refined_ast(ast: Ast):
+    print(f"Ast")
+    print("\tprocess_declarations")
+    [print("\t\t", dec) for dec in ast.process_declarations]
+    print("\thistory")
+    print("\t\tevent_number", ast.history.num_events)
+    for item in ast.history.events:
+        print("\t\t", end="")
+        pprint.pp(item)
 
 try:
     parser = Lark(grammar)
     tree = parser.parse(ex)
     ast = AstNormalizer().visit(tree)
-    print(ast)
-    print(tree.pretty())
+    # print(tree.pretty())
+    # print_ast(ast)
+    refined_ast = create_refined_ast(ast)
+    print_refined_ast(refined_ast)
 except UnexpectedInput as e:
     print(e)
     exit(1)
