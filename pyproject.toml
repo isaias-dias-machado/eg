@@ -1,0 +1,45 @@
+# Build configuration for the `spacetime-dsl` distribution.
+#
+# The importable package is `spacetime/` (flat layout, repo root); the
+# distribution is named `spacetime-dsl` only to avoid colliding with the
+# unrelated `spacetime` project on PyPI. Nothing here is published yet.
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spacetime-dsl"
+version = "0.1.0"
+description = "Compiler front-end for a DSL describing Lamport space-time diagrams"
+readme = "README.md"
+requires-python = ">=3.10"
+# Runtime dependencies only. `lark` is what spacetime/parser.py imports;
+# the LarkAG fork that used to be listed here was never imported.
+dependencies = [
+    "lark==1.3.1",
+]
+
+[project.scripts]
+# `spacetime FILE` — argv is passed to cli.main, whose return value becomes
+# the process exit code (0 ok, 1 DSL or I/O error).
+spacetime = "spacetime.cli:main"
+
+[dependency-groups]
+# Install with: pip install --editable . --group dev
+dev = [
+    "pytest>=8",
+]
+
+[tool.setuptools]
+# Explicit: example.txt, tests/ and exercicios_random/ also sit at the repo
+# root and must not be picked up by flat-layout auto-discovery.
+packages = ["spacetime"]
+
+[tool.setuptools.package-data]
+# grammar.lark is read at runtime via Path(__file__).with_name("grammar.lark"),
+# so it must ship inside the package or an installed copy cannot parse anything.
+spacetime = ["grammar.lark"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

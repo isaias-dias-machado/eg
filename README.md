@@ -2,7 +2,10 @@
 
 Requires Python 3.10 or newer (developed and tested on 3.13).
 
-Run `./setup.sh` to create the virtual environment and install dependencies.
+Run `./setup.sh` to create the virtual environment and install the project.
+It performs an editable install (`pip install --editable . --group dev`), so
+`import spacetime` resolves to this checkout and the `spacetime` command is
+available inside `.venv/bin/`. Dependencies live in `pyproject.toml`.
 
 The environment lives **only** in `.venv/`. Do not create one in place at the
 repository root (`python3 -m venv .`): `setup.sh` refuses to run in that
@@ -15,7 +18,7 @@ Compile a DSL file and print the refined AST:
 
 ```bash
 source .venv/bin/activate
-python main.py example.txt
+spacetime example.txt        # equivalently: python -m spacetime example.txt
 ```
 
 Run the test suite:

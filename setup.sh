@@ -57,13 +57,17 @@ fi
 
 # --- Dependencies ---------------------------------------------------------
 
-echo "Installing dependencies..."
-.venv/bin/python -m pip install -r requirements.txt
+# Editable install: `import spacetime` resolves to this checkout, the
+# `spacetime` console script is linked into .venv/bin/, and pytest can import
+# the package without relying on the current directory. Runtime dependencies
+# and the `dev` group (pytest) are declared in pyproject.toml.
+echo "Installing the project in editable mode, with dev dependencies..."
+.venv/bin/python -m pip install --editable . --group dev
 
 echo ""
 echo "Setup complete! Using $(.venv/bin/python -V 2>&1) from .venv/"
 echo "Activate your environment with:"
 echo "    source .venv/bin/activate"
 echo ""
-echo "Then compile a program with:  python main.py example.txt"
+echo "Then compile a program with:  spacetime example.txt"
 echo "And run the tests with:       pytest -q"
