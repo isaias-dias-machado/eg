@@ -1,6 +1,0 @@
-TODO:
-- 2x negative test for double declaration: message and processes
-- undefined event reference
-- undefined event reference and defined later
-
-
