@@ -18,7 +18,7 @@ from .ast import (
     SourceLocation,
 )
 from .builder import AstBuilder, build_ast
-from .compiler import compile_file, compile_source
+from .compiler import StageObserver, compile_file, compile_source
 from .errors import DslError, ParseError, SemanticError
 from .parser import parse
 from .semantics import create_refined_ast
@@ -39,6 +39,7 @@ __all__ = [
     "SendEvent",
     "SendEventRefined",
     "SourceLocation",
+    "StageObserver",
     "build_ast",
     "compile_file",
     "compile_source",

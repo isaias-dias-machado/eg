@@ -1,8 +1,15 @@
 from pathlib import Path
 
 import pytest
+from lark import Tree
 
-from spacetime import SemanticError, compile_file, compile_source
+from spacetime import (
+    Ast,
+    RefinedAst,
+    SemanticError,
+    compile_file,
+    compile_source,
+)
 
 ROOT = Path(__file__).parents[1]
 
@@ -27,6 +34,31 @@ History {
 
     assert program.process_declarations == ["p", "q"]
     assert len(program.history.events) == 2
+
+
+def test_compile_source_reports_every_stage() -> None:
+    seen: list[tuple[str, object]] = []
+
+    compile_source(
+        """Processes {
+  p
+}
+
+Messages {
+  request := "x"
+}
+
+History {
+  m1 := Send(request) :: p -> p
+}
+""",
+        observe=lambda stage, output: seen.append((stage, output)),
+    )
+
+    assert [stage for stage, _ in seen] == ["parse", "ast", "refined"]
+    assert isinstance(seen[0][1], Tree)
+    assert isinstance(seen[1][1], Ast)
+    assert isinstance(seen[2][1], RefinedAst)
 
 
 def test_example_txt_compiles() -> None:

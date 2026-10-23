@@ -6,7 +6,18 @@ stable and cannot be parsed back into a tree.
 
 import pprint
 
+from lark import Tree
+
 from .ast import Ast, RefinedAst
+
+
+def format_parse_tree(tree: Tree) -> str:
+    """Render a Lark parse tree as indented text.
+
+    This is the stage-1 output of the compiler. Lark's ``pretty`` layout is
+    used unchanged, so it depends on the grammar's rule names.
+    """
+    return tree.pretty()
 
 
 def format_ast(ast: Ast) -> str:

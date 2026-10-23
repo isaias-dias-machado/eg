@@ -21,6 +21,13 @@ source .venv/bin/activate
 spacetime example.txt        # equivalently: python -m spacetime example.txt
 ```
 
+To inspect every compiler stage, add `--print-stages`. It prints the Lark
+parse tree, the intermediate `Ast`, and the refined AST, each under a header:
+
+```bash
+spacetime --print-stages example.txt
+```
+
 Run the test suite:
 
 ```bash
