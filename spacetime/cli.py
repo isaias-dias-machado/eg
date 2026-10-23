@@ -1,3 +1,5 @@
+"""Command-line entry point: compile one DSL file and print its result."""
+
 import argparse
 import sys
 
@@ -7,6 +9,12 @@ from .render import format_refined_ast
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Compile the file named on the command line and print its refined AST.
+
+    Returns a process exit code: ``0`` on success, ``1`` when the file
+    cannot be read or the program contains a DSL error. Diagnostics go to
+    stderr; the rendered AST goes to stdout.
+    """
     parser = argparse.ArgumentParser(prog="space-time-dsl")
     parser.add_argument("path", help="DSL source file")
     args = parser.parse_args(argv)
