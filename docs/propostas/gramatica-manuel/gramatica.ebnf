@@ -1,0 +1,36 @@
+(* Proposta para discussão; não é o ficheiro grammar.lark executável. *)
+Programa ::= { BlocoPrincipal }
+BlocoPrincipal ::= BlocoProcessos | BlocoMensagens | BlocoHistorico
+BlocoProcessos ::= "Processes" "{" { DeclaracaoProcesso } "}"
+DeclaracaoProcesso ::= IDENT
+BlocoMensagens ::= "Messages" "{" { DeclaracaoMensagem } "}"
+DeclaracaoMensagem ::= IDENT ":=" STRING
+BlocoHistorico ::= "History" Bloco
+Bloco ::= "{" { Instrucao } "}"
+Instrucao ::= DeclaracaoVariavel | Atribuicao | Envio | Rececao
+            | Condicional | Repeticao | Bloco
+DeclaracaoVariavel ::= "var" IDENT ":" Tipo ":=" Expressao ";"
+Tipo ::= "int" | "bool"
+Atribuicao ::= IDENT ":=" Expressao ";"
+Envio ::= IDENT ":=" "Send" "(" IDENT ")" "::" IDENT "->" ListaProcessos [ ";" ]
+Rececao ::= "Recv" "(" IDENT ")" "::" ListaProcessos [ ";" ]
+ListaProcessos ::= IDENT { "," IDENT }
+Condicional ::= "if" Expressao Bloco [ "else" Bloco ]
+Repeticao ::= "repeat" Expressao Bloco
+Expressao ::= Disjuncao
+Disjuncao ::= Conjuncao { "or" Conjuncao }
+Conjuncao ::= Igualdade { "and" Igualdade }
+Igualdade ::= Relacao [ OperadorIgualdade Relacao ]
+OperadorIgualdade ::= "==" | "!="
+Relacao ::= Soma [ OperadorRelacional Soma ]
+OperadorRelacional ::= "<" | "<=" | ">" | ">="
+Soma ::= Produto { OperadorAditivo Produto }
+OperadorAditivo ::= "+" | "-"
+Produto ::= Unaria { "*" Unaria }
+Unaria ::= "-" Unaria | "not" Unaria | Primaria
+Primaria ::= INT | "true" | "false" | IDENT | "(" Expressao ")"
+
+(* Léxico em notação de expressões regulares; ver README para reservadas. *)
+IDENT = /[a-z][a-zA-Z0-9_]*/
+INT = /[0-9]+/
+STRING = /"[^"\r\n]*"/
