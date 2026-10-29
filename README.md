@@ -37,9 +37,7 @@ pytest -q
 
 ## Specification
 
-- [`docs/semantics.md`](docs/semantics.md) — normative specification of the
-  semantic analysis: well-formedness rules, name-resolution rules, error
-  precedence, resolved-AST invariants, and a map from each rule to its test.
+- [`docs/semantics.md`](docs/semantics.md) — the semantic rules, in prose.
 - [`spacetime/grammar.lark`](spacetime/grammar.lark) — the concrete syntax.
 
 ## Linguagem para escrever lamport space-time diagrams
