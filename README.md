@@ -39,6 +39,8 @@ pytest -q
 
 - [`docs/semantics.md`](docs/semantics.md) — the semantic rules, in prose.
 - [`spacetime/grammar.lark`](spacetime/grammar.lark) — the concrete syntax.
+- [`docs/qualidade.md`](docs/qualidade.md) — language and grammar quality
+  evaluation (TP1, task 4), with metrics from `docs/metricas_gramatica.py`.
 
 ## Linguagem para escrever lamport space-time diagrams
 
