@@ -44,13 +44,10 @@ History {
   linhas dos processos, `Messages` às mensagens trocadas, `Send` e `Recv` aos
   eventos de envio e de receção.
 - (+) Os padrões frequentes escrevem-se de forma compacta. Um envio pode ter
-  vários destinatários (`m2 := Send(ack) :: q -> p, q, r`) e uma receção pode
-  cobrir vários processos (`Recv(m2) :: p, q`). Cada mensagem é declarada uma
+  vários destinatários (`m2 := Send(ack) :: q -> p, q, r`). Cada mensagem é declarada uma
   vez e reutilizada pelo nome.
 - (−) Falta um conceito do domínio: os diagramas de Lamport têm também
   eventos internos (locais), que a linguagem não representa.
-- (−) Não há mecanismos de abstração (variáveis, parâmetros, decisão ou
-  repetição). Um padrão que se repete tem de ser escrito evento a evento.
 
 **Efeito:** favorece a aprendizagem, a escrita e a compreensão de cenários
 pequenos. Não afeta o desempenho.
@@ -107,10 +104,6 @@ compreensão. As exceções têm de ser memorizadas. Não afeta o desempenho.
 
 - (−) Não há extensão léxica nem semântica: o utilizador não pode definir
   tipos, macros, abreviaturas ou novos tipos de evento.
-- (+) A extensão sintática fica localizada. Um novo tipo de evento (por
-  exemplo, um evento interno) é uma nova alternativa de `event` na gramática,
-  com um caso correspondente em cada fase do pipeline (builder, análise
-  semântica, desenho).
 - (+) O conteúdo das mensagens não é interpretado. Pode por isso transportar
   informação do domínio sem alterar a gramática.
 
@@ -143,9 +136,6 @@ extensão limita a escrita de cenários mais ricos.
 - (+) Os erros semânticos indicam o nome em causa e a sua posição no ficheiro
   (`SemanticError`). Os erros de sintaxe mostram um excerto do código
   (`ParseError`).
-- (−) Por decisão de desenho, são aceites alguns enganos prováveis:
-  destinatários repetidos, receções repetidas do mesmo envio e declarações
-  não usadas.
 - (−) A análise para no primeiro erro (`spacetime/semantics.py` lança a
   exceção logo que o encontra). Corrigir vários erros obriga a várias
   execuções.
@@ -182,11 +172,6 @@ O NB07 avalia a gramática como artefacto para pessoas (usabilidade:
 compreensão, derivação, manutenção) e como entrada de ferramentas (eficiência:
 reconhecimento, geração). Primeiro apresentamos as métricas e depois a
 caracterização que delas resulta.
-
-Tal como no NB07, as métricas são extraídas da gramática compilada pelo Lark
-(`parser.rules`). O Lark converte cada operador EBNF `*` numa regra auxiliar
-recursiva, por isso a gramática compilada tem 26 não-terminais, embora a
-gramática escrita tenha 21 regras.
 
 ### 2.1 Métricas de tamanho
 

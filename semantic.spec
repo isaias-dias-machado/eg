@@ -1,0 +1,5 @@
+- No undeclared usages
+- No duplicate declarations
+- No duplicate blocks
+- No blocks that are not `Processes`, `Messages`, or `History`
+- Can't receive a message that was not sent to the process receiving, see `./tests/fixtures/invalid/recv_not_recipient.st`
