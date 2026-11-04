@@ -9,8 +9,9 @@ com base na lição de P. R. Henriques):
    eficiência, medidas com métricas de tamanho, forma e léxico (NB07, §7.2).
 
 O objeto avaliado é a linguagem definida por `spacetime/grammar.lark` (sintaxe)
-e por `docs/semantics.md` (regras semânticas). As métricas são calculadas por
-`docs/metricas_gramatica.py`, que reutiliza o código do NB07. Para as reproduzir:
+e pelas regras semânticas de `semantic.spec`, verificadas pelo compilador. As
+métricas são calculadas por `docs/metricas_gramatica.py`, que reutiliza o código
+do NB07. Para as reproduzir:
 
 ```bash
 python docs/metricas_gramatica.py
@@ -18,9 +19,9 @@ python docs/metricas_gramatica.py
 
 ## 1. Qualidade da linguagem
 
-A linguagem descreve cenários de comunicação entre processos, para gerar
-diagramas espaço-tempo de Lamport. Um programa declara processos e mensagens e
-regista uma história de envios e receções:
+A linguagem descreve cenários de comunicação entre processos, para serem
+representados como diagramas espaço-tempo de Lamport. Um programa declara
+processos e mensagens e regista uma história de envios e receções:
 
 ```
 Processes {
@@ -38,14 +39,17 @@ History {
 }
 ```
 
+O compilador verifica o programa e produz uma representação resolvida. O
+desenho do diagrama fica para a Parte II.
+
 ### 1.1 Expressividade
 
 - (+) Cada construção corresponde a um conceito do domínio: `Processes` às
   linhas dos processos, `Messages` às mensagens trocadas, `Send` e `Recv` aos
   eventos de envio e de receção.
 - (+) Os padrões frequentes escrevem-se de forma compacta. Um envio pode ter
-  vários destinatários (`m2 := Send(ack) :: q -> p, q, r`). Cada mensagem é declarada uma
-  vez e reutilizada pelo nome.
+  vários destinatários (`m2 := Send(ack) :: q -> p, q, r`). Cada mensagem é
+  declarada uma vez e reutilizada pelo nome.
 - (−) Falta um conceito do domínio: os diagramas de Lamport têm também
   eventos internos (locais), que a linguagem não representa.
 
@@ -60,8 +64,8 @@ pequenos. Não afeta o desempenho.
 - (+) O conteúdo de cada mensagem (`request := "Request o que quiser"`) é
   texto livre e funciona como uma descrição embutida.
 - (+) Fora dos programas, a linguagem está documentada pela gramática
-  comentada (com um exemplo de cada evento), pelas regras semânticas em prosa
-  (`docs/semantics.md`) e por um exemplo com o diagrama correspondente (README).
+  comentada (com um exemplo de cada evento), pela lista de regras semânticas
+  (`semantic.spec`) e por um exemplo com o diagrama correspondente (README).
 
 **Efeito:** a falta de comentários prejudica a compreensão de cenários grandes.
 
@@ -70,12 +74,13 @@ pequenos. Não afeta o desempenho.
 - (+) Há uma única forma de declarar um processo, uma mensagem, um envio e
   uma receção.
 - (−) O programa não tem uma forma única. Os três blocos são opcionais e
-  podem aparecer por qualquer ordem, e as mudanças de linha são livres:
-  `Processes { p q }` é válido, tal como vários blocos na mesma linha.
+  podem aparecer por qualquer ordem, e as mudanças de linha não têm
+  significado: `Processes { p q }` é válido, tal como vários blocos na mesma
+  linha ou um evento partido em várias linhas.
 - (−) Duas escritas parecidas têm significados diferentes. `Recv(m2) :: p, q`
   é **um** evento, enquanto `Recv(m2) :: p` seguido de `Recv(m2) :: q` são
-  **dois** eventos, em posições temporais diferentes (`docs/semantics.md`,
-  secção *Result*).
+  **dois** eventos, em posições temporais diferentes (ver o comentário de
+  `recv_event` em `spacetime/grammar.lark`).
 
 **Efeito:** a forma única de cada construção ajuda a aprendizagem e a
 compreensão. A ordem livre facilita a escrita, mas dificulta comparar
@@ -126,8 +131,8 @@ extensão limita a escrita de cenários mais ricos.
 
 ### 1.7 Fiabilidade
 
-- (+) A semântica está definida (`docs/semantics.md`) e é verificada
-  estaticamente antes de gerar o diagrama:
+- (+) O compilador verifica estaticamente as regras semânticas (`semantic.spec`,
+  `spacetime/builder.py` e `spacetime/semantics.py`):
   - cada bloco aparece no máximo uma vez;
   - os nomes de processos, de mensagens e de envios são únicos;
   - a mensagem, o emissor e os destinatários de um envio estão declarados;
@@ -141,7 +146,7 @@ extensão limita a escrita de cenários mais ricos.
   execuções.
 
 **Efeito:** as restrições explícitas melhoram a compreensão. As verificações
-são estáticas, feitas uma vez antes de gerar o diagrama.
+são estáticas: correm uma vez, ao compilar o programa.
 
 ### 1.8 Modularidade
 
@@ -157,11 +162,11 @@ entre cenários.
 
 | Fator | Avaliação | Razão principal |
 |---|---|---|
-| Expressividade | Média | As construções são os conceitos do diagrama, mas faltam os eventos internos e a abstração |
+| Expressividade | Média | As construções são os conceitos do diagrama, mas faltam os eventos internos |
 | Documentação | Baixa | Não há comentários; só o texto das mensagens |
 | Unicidade | Média | Cada construção tem uma só forma, mas a ordem dos blocos e o layout são livres, e uma receção conjunta difere de receções separadas |
 | Consistência | Alta, com exceções | `:=`, `::` e `->` são uniformes; `Send` e `Recv` são assimétricos |
-| Extensibilidade | Baixa | Não há mecanismos de extensão; a extensão sintática é localizada |
+| Extensibilidade | Baixa | Não há mecanismos de extensão |
 | Escalabilidade | Baixa | O programa cresce linearmente, sem repetição, e os nomes são globais |
 | Fiabilidade | Alta | As regras estão definidas e são verificadas, com a posição de cada erro; a análise para no primeiro erro |
 | Modularidade | Baixa | Não há importação; os blocos só separam declarações e história |
@@ -173,26 +178,29 @@ compreensão, derivação, manutenção) e como entrada de ferramentas (eficiên
 reconhecimento, geração). Primeiro apresentamos as métricas e depois a
 caracterização que delas resulta.
 
+Os valores são os da gramática atual. A própria avaliação levou a corrigir a
+versão anterior, como se explica em 2.4.
+
 ### 2.1 Métricas de tamanho
 
 | Métrica | Valor | Observação |
 |---|---|---|
-| Terminais | 17 | 16 usados nas regras, mais o espaço ignorado |
-| Não-terminais | 26 | 21 escritos, mais 5 auxiliares gerados a partir do EBNF |
-| Produções | 40 | |
-| Produções unitárias (A → B) | 10 | 3 vêm de `_block`; as restantes, de listas e de `start` |
-| Não-terminais diretamente recursivos | 6 | ver 2.2 |
+| Terminais | 16 | 15 usados nas regras, mais o espaço ignorado |
+| Não-terminais | 25 | 20 escritos, mais 5 auxiliares gerados a partir do EBNF |
+| Produções | 38 | |
+| Produções unitárias (A → B) | 15 | 3 vêm de `_block` e 2 de `event`; as restantes, de listas e de `start` |
+| Não-terminais diretamente recursivos | 5 | ver 2.2 |
 | Não-terminais indiretamente recursivos | 0 | |
-| Comprimento do lado direito (média / máx.) | 2,1 / 10 | o máximo é `send_event` |
-| Produções por não-terminal (média / máx.) | 1,54 / 3 | o máximo é `_block` |
+| Comprimento do lado direito (média / máx.) | 1,76 / 10 | o máximo é `send_event` |
+| Produções por não-terminal (média / máx.) | 1,52 / 3 | o máximo é `_block` |
 | Subgramáticas importadas | 0 | |
-| Grau de entrada / saída médio | 1,58 / 1,58 | grafo de dependências entre não-terminais |
-| Estados LALR / entradas da tabela | 80 / 290 | |
+| Grau de entrada / saída médio | 1,32 / 1,32 | grafo de dependências entre não-terminais |
+| Estados LALR / entradas da tabela | 63 / 178 | |
 
 Para comparação, a gramática de expressões usada como exemplo no NB07 tem
 10 terminais, 6 não-terminais, 12 produções e uma tabela LALR de 25 estados e
-85 entradas. A nossa gramática é cerca de três vezes maior, mas continua
-pequena.
+85 entradas. A nossa gramática é entre 1,6 e 4,2 vezes maior, conforme a
+métrica, mas continua pequena.
 
 Há ainda 6 regras da forma `X → IDENTIFIER` ou `X → STRING`
 (`process_declaration`, `message_name`, `message_identifier`,
@@ -203,17 +211,16 @@ seu papel (declaração ou referência, processo, mensagem ou evento).
 ### 2.2 Métricas de forma
 
 - **Forma da recursão:** só há recursão direta.
-- **Tipo de recursão:** é mista. `_newlines`, escrita na gramática, é
-  recursiva à direita. As 5 regras auxiliares que o Lark gera a partir de `*`
-  são recursivas à esquerda.
-- **Notação:** é mista. 5 regras usam EBNF (`*`) e 16 são BNF puro. A
-  repetição é escrita de duas maneiras: com `*` nas listas e com recursão BNF
-  em `_newlines`. O NB07 nota que o uso inconsistente da notação prejudica a
-  legibilidade.
+- **Tipo de recursão:** é uniforme. As 5 regras recursivas são auxiliares que o
+  Lark gera a partir de `*`, todas recursivas à esquerda. Nenhuma regra escrita
+  é recursiva.
+- **Notação:** usa as duas. 5 regras usam EBNF (`*`) e 15 são BNF puro, mas de
+  forma coerente: a repetição escreve-se sempre com `*`. O NB07 nota que o uso
+  inconsistente da notação prejudica a legibilidade, o que aqui não acontece.
 
 ### 2.3 Métricas lexicográficas
 
-- **Clareza dos identificadores:** os 21 não-terminais têm nomes derivados de
+- **Clareza dos identificadores:** os 20 não-terminais têm nomes derivados de
   conceitos do domínio ou da estrutura (`processes_block`, `send_event`,
   `process_list`, ...). 4 usam abreviaturas (`decl` em três, `recv` em um). Há
   2 inconsistências: `message_decl` abrevia o que `process_declaration`
@@ -225,71 +232,82 @@ seu papel (declaração ou referência, processo, mensagem ou evento).
   são convencionais. `::` (processo onde ocorre o evento) não deriva de um
   conceito e tem outros significados noutras linguagens (tipos em Haskell,
   âmbito em C++).
-- **Terminais flexíveis:** 4 flexíveis (`IDENTIFIER`, `STRING`, a mudança de
-  linha `_NL` e o espaço ignorado) e 13 fixos (5 palavras-chave, 3 operadores e
-  5 sinais de pontuação). Os flexíveis têm restrições: `IDENTIFIER` tem de
-  começar por minúscula (um processo `Alice` é rejeitado), e `STRING` não tem
-  sequências de escape, não pode conter `"` nem mudar de linha.
+- **Terminais flexíveis:** 3 flexíveis (`IDENTIFIER`, `STRING` e o espaço
+  ignorado) e 13 fixos (5 palavras-chave, 3 operadores e 5 sinais de
+  pontuação). Os flexíveis têm restrições: `IDENTIFIER` tem de começar por
+  minúscula (um processo `Alice` é rejeitado), e `STRING` não tem sequências de
+  escape, não pode conter `"` nem mudar de linha.
 - **Comentários:** não há comentários de linha, de bloco nem com
   meta-informação.
 
 ### 2.4 Reconhecimento: conflitos e ambiguidade
 
 Esta verificação vai além das métricas do NB07, mas mede diretamente a
-característica de reconhecimento.
+característica de reconhecimento. Foi também o que deu origem à principal
+alteração da gramática.
 
-O projeto usa o algoritmo de Earley (`spacetime/parser.py`). Se a mesma
-gramática for construída como LALR(1), o Lark encontra **9 conflitos
-shift/reduce, todos no terminal `_NL`**, e resolve-os sem avisar (escolhe
-*shift*).
-
-A causa é `_newlines`: pode ser vazia e aparece em posições adjacentes. Por
-exemplo, em
+Na versão anterior, as mudanças de linha eram tratadas por uma regra que podia
+ser vazia, `_newlines`, usada 11 vezes em 7 regras e por vezes em posições
+adjacentes:
 
 ```
 history_block : _HISTORY "{" _newlines _event_list _newlines "}"
 event         : send_event _newlines | recv_event _newlines
 ```
 
-as mudanças de linha depois do último evento tanto podem ser derivadas pelo
-evento como pelo bloco. Acontece o mesmo entre blocos
-(`(_newlines _block _newlines)*`) e em `messages_block`. `processes_block` não
-tem o `_newlines` final, o que também torna inconsistentes três blocos que
-deviam ter a mesma forma.
+As mudanças de linha depois do último evento tanto podiam ser derivadas pelo
+evento como pelo bloco, e o mesmo acontecia entre blocos. Construída como
+LALR(1), essa gramática tinha **9 conflitos shift/reduce, todos na mudança de
+linha**, que o Lark resolvia sem avisar. Com `ambiguity="explicit"`, o Earley
+encontrava nós ambíguos em **7 dos 8 exemplos válidos**. A árvore final não era
+afetada, porque as mudanças de linha são descartadas, mas o defeito ficava
+escondido.
 
-Com `ambiguity="explicit"`, o Earley encontra nós ambíguos em **7 dos 8
-exemplos válidos** (de 1 a 3 por ficheiro); só o programa vazio não tem
-nenhum. A gramática é portanto ambígua. A árvore final não é afetada, porque
-as mudanças de linha são descartadas, mas o defeito fica escondido e impede o
-uso de um parser LALR(1), que seria linear.
+A correção foi tratar a mudança de linha como espaço (`%ignore /[ \t\n]/`) e
+remover `_newlines`. O mesmo script mediu o resultado (os valores de antes são
+os do commit `6e93331`):
 
-Além disso, `_newlines` nunca torna uma mudança de linha obrigatória, porque
-pode ser vazia (`Processes { p q }` é válido). Na prática, só impede que haja
-mudanças de linha dentro de um evento.
+| Métrica | Antes | Depois |
+|---|---|---|
+| Conflitos LALR(1) | 9 | 0 |
+| Exemplos válidos com ambiguidade | 7 de 8 | 0 de 8 |
+| Regras escritas | 21 | 20 |
+| Terminais | 17 | 16 |
+| Produções (compiladas) | 40 | 38 |
+| Produções unitárias | 10 | 15 |
+| Grau de entrada / saída médio | 1,58 | 1,32 |
+| Estados / entradas LALR | 80 / 290 | 63 / 178 |
+| Tipo de recursão | Direita e esquerda | Só esquerda (gerada) |
+
+Os 8 exemplos válidos produzem exatamente a mesma árvore e os 51 testes
+continuam a passar. A gramática deixou de ter conflitos LALR(1), o que garante
+que não é ambígua. O custo é pequeno: as produções unitárias sobem, porque
+`event → send_event` e as listas deixaram de ter `_newlines`. A linguagem mudou
+num ponto: passou a ser possível mudar de linha dentro de um evento, por
+exemplo para partir uma lista longa de destinatários.
 
 ### 2.5 Caracterização da gramática independente de contexto
 
 | Elemento (NB07) | Na nossa gramática | Efeito segundo o NB07 |
 |---|---|---|
-| Identificadores claros | 21 de 21 derivados de conceitos; 4 abreviaturas; 2 inconsistências | Favorece compreensão, derivação e manutenção |
-| Produções unitárias | 10, mais 6 regras que dão papel aos nomes | Favorecem compreensão e manutenção; prejudicam derivação e eficiência |
-| Comprimento das produções | Média de 2,1; `send_event` tem 10 símbolos | As regras longas são mais difíceis de ler; `send_event` segue a ordem da sintaxe concreta |
-| Notação | Mista (EBNF e BNF) | O uso inconsistente prejudica a compreensão |
-| Recursão | Só direta; à direita (`_newlines`) e à esquerda (gerada) | A recursão à direita favorece a derivação |
-| Modularidade | Um ficheiro, 0 importações | Pouco relevante numa gramática de 21 regras |
-| Complexidade sintática | Grau médio 1,58; sem recursão indireta; máx. 3 alternativas | Baixa, o que favorece a manutenção |
+| Identificadores claros | 20 de 20 derivados de conceitos; 4 abreviaturas; 2 inconsistências | Favorece compreensão, derivação e manutenção |
+| Produções unitárias | 15, mais 6 regras que dão papel aos nomes | Favorecem compreensão e manutenção; prejudicam derivação e eficiência |
+| Comprimento das produções | Média de 1,76; `send_event` tem 10 símbolos | As regras longas são mais difíceis de ler; `send_event` segue a ordem da sintaxe concreta |
+| Notação | EBNF nas listas e BNF no resto, de forma coerente | Só o uso inconsistente prejudica a compreensão |
+| Recursão | Só direta, à esquerda e gerada pelo Lark; nenhuma regra escrita é recursiva | A recursão à esquerda dificulta a derivação, mas aqui fica escondida pelo `*` |
+| Modularidade | Um ficheiro, 0 importações | Pouco relevante numa gramática de 20 regras |
+| Complexidade sintática | Grau médio 1,32; sem recursão indireta; máx. 3 alternativas | Baixa, o que favorece a manutenção |
 
 - **Compreensão:** os nomes e os comentários da gramática (secções e um
-  exemplo de cada evento) ajudam. A notação mista e a regra longa de
-  `send_event` prejudicam.
-- **Derivação:** as listas em EBNF são compactas, mas a ambiguidade faz com
-  que o mesmo texto tenha várias derivações.
-- **Manutenção:** as dependências são simples. O ponto fraco é `_newlines`,
-  que aparece 11 vezes em 7 regras: cada nova construção tem de o colocar no
-  sítio certo, e a ambiguidade atual mostra como é fácil errar.
-- **Reconhecimento:** por causa dos conflitos, é preciso um parser geral
-  (Earley), que no pior caso é cúbico, em vez de um LALR(1), que é linear.
-- **Geração:** a tabela LALR teria 80 estados e 290 entradas, uma dimensão
+  exemplo de cada evento) ajudam. A regra longa de `send_event` prejudica.
+- **Derivação:** as listas em EBNF são compactas, e cada texto tem uma só
+  derivação.
+- **Manutenção:** as dependências são simples. Como a mudança de linha é
+  tratada como espaço, as novas construções não têm de a prever.
+- **Reconhecimento:** a gramática já não precisa de um parser geral. O projeto
+  continua a usar Earley, que no pior caso é cúbico, mas pode passar a LALR(1),
+  que é linear (ver secção 4).
+- **Geração:** a tabela LALR teria 63 estados e 178 entradas, uma dimensão
   pequena.
 
 ### 2.6 Gramática de atributos
@@ -305,7 +323,7 @@ procedimental, e por isso não permite extrair estas métricas.
 ## 3. Limitações da avaliação
 
 - As métricas são calculadas sobre a gramática compilada pelo Lark. As regras
-  auxiliares do EBNF aumentam as contagens (21 regras escritas contra 26
+  auxiliares do EBNF aumentam as contagens (20 regras escritas contra 25
   não-terminais).
 - A clareza dos identificadores e das palavras-chave é um juízo nosso, não
   uma medida automática.
@@ -317,37 +335,21 @@ procedimental, e por isso não permite extrair estas métricas.
 
 ## 4. Propostas de melhoria
 
-Por ordem de prioridade:
+A principal melhoria, a eliminação da ambiguidade, já foi aplicada (ver 2.4).
+Ficam estas, por ordem de prioridade:
 
-1. **Eliminar a ambiguidade das mudanças de linha.** Tratar a mudança de
-   linha como espaço (`%ignore /[ \t\r\n]/`) e remover `_NL`, `_newlines` e as
-   suas 11 utilizações. Medimos esta variante com o mesmo script:
-
-   | Métrica | Atual | Proposta |
-   |---|---|---|
-   | Conflitos LALR(1) | 9 | 0 |
-   | Exemplos válidos com ambiguidade | 7 de 8 | 0 de 8 |
-   | Regras escritas | 21 | 20 |
-   | Terminais | 17 | 16 |
-   | Produções (compiladas) | 40 | 38 |
-   | Estados / entradas LALR | 80 / 290 | 63 / 178 |
-   | Tipo de recursão | Direita e esquerda | Só esquerda (gerada) |
-
-   Os 8 exemplos válidos produzem exatamente a mesma árvore que hoje, e o
-   exemplo com erro de sintaxe continua a ser rejeitado. A única diferença na
-   linguagem é que passa a ser possível mudar de linha dentro de um evento
-   (por exemplo, para partir uma lista longa de destinatários), o que hoje é
-   um erro. Depois desta mudança, o parser pode passar a LALR(1)
-   (`parser="lalr"`).
-2. **Comentários de linha** (por exemplo `// ...`, com
+1. **Comentários de linha** (por exemplo `// ...`, com
    `COMMENT: /\/\/[^\n]*/` e `%ignore COMMENT`). Melhora a documentação com
    apenas mais um terminal, sem efeito na árvore.
-3. **Reportar todos os erros semânticos** em vez de parar no primeiro.
+2. **Reportar todos os erros semânticos** em vez de parar no primeiro.
    Melhora a fiabilidade na prática e a escrita.
-4. **Nomes consistentes na gramática**, por exemplo `message_decl` passa a
+3. **Nomes consistentes na gramática**, por exemplo `message_decl` passa a
    `message_declaration`, e os nomes declarados de processos e mensagens
    passam a seguir o mesmo padrão. Implica renomear os métodos
    correspondentes em `spacetime/builder.py`.
+4. **Passar o parser a LALR(1)** (`parser="lalr"`), que é linear. A gramática
+   já o permite: 50 dos 51 testes passam, e o que falha é o da posição do erro
+   de fim de ficheiro, que exige um pequeno ajuste.
 5. **Mais expressividade e escalabilidade:** eventos internos e mecanismos de
    repetição e de parametrização (a extensão discutida no grupo, com
    variáveis, `if` e `repeat`).
@@ -358,7 +360,8 @@ A linguagem é pequena, consistente e próxima do domínio. Exprime bem cenário
 pequenos e tem uma análise semântica fiável, que indica a posição de cada
 erro. Os pontos fracos são a documentação (não há comentários), a
 escalabilidade e a modularidade (não há abstração nem reutilização). Na
-gramática, o problema principal é o tratamento das mudanças de linha. Torna a
-gramática ambígua (9 conflitos LALR e ambiguidade em 7 dos 8 exemplos) e
-obriga a usar um parser geral. A primeira proposta resolve este problema com
-uma alteração local, verificada com as mesmas métricas.
+gramática, a avaliação encontrou um problema no tratamento das mudanças de
+linha, que a tornava ambígua (9 conflitos LALR e ambiguidade em 7 dos 8
+exemplos). A correção foi uma alteração local, verificada com as mesmas
+métricas: a gramática atual é LALR(1), sem conflitos, e produz as mesmas
+árvores com uma tabela 39% mais pequena.
