@@ -1,92 +1,130 @@
 // --------------------------------------------------------------------------
 // Syntax + semantics: an attribute grammar in comments (LarkAG notation)
 // --------------------------------------------------------------------------
-// SA/IA: synthesized/inherited attributes
-// ER: evaluation rules.
-// CC: context conditions
+// SA(rule) { attr: type }  declares a synthesized attribute
+// IA(rule) { attr: type }  declares an inherited attribute
+// ER <python statement>    evaluation rule: an assignment, comprehension or
+//                          loop over children(rule) -- the child nodes that
+//                          match `rule`, in source order.  A rule occurring
+//                          once is referenced directly by name, e.g.
+//                          message_identifier.name.
+// CC assert <cond>, f"msg" context condition, as a plain Python assert
 //
-// -> represents a key-value relation
-//
-// procs       declared process names
+// procs       declared process names, in declaration order
 // msgs        message name -> payload
 // seen_sends  send-event name -> recipients, for the sends seen so far
 //
-// Blocks may appear in any order, so procs/msgs are
-// synthesized up to `start` and inherited back down.
+// Blocks may appear in any order, so procs/msgs are synthesized up to `start`
+// and inherited back down.
 // `seen_sends` is inherited along the event list in source order.  Process,
-// message and event names are separate namespaces.  Pure syntax errors (e.g.
-// tests/fixtures/invalid/syntax_error.st) are rejected by the CFG itself,
-// before any attribute is evaluated.
+// message and event names are separate namespaces, see
+// ../tests/fixtures/valid/MAYBE_TODO_valid_problematic_duplication.st.  Pure
+// syntax errors (e.g. tests/fixtures/invalid/syntax_error.st) are rejected by
+// the CFG itself, before any attribute is evaluated.
 // --------------------------------------------------------------------------
+
+// --------------------------------------------------------------------------
+// Attribute declarations
+// --------------------------------------------------------------------------
+
+// Cheat sheet:
+// SA - Synthesized Attr
+// IA - Inherited Attr
+// ER - Evaluation Rule
+// CC - Context Condition
+
+//  SA(start)               { procs: list[str], msgs: dict[str, str] }
+
+//  SA(processes_block)     { procs: list[str] }
+//  SA(messages_block)      { msgs: dict[str, str] }
+//  SA(message_decl)        { entry: dict[str, str] }
+
+
+//  IA(history_block)       { procs: list[str], msgs: dict[str, str] }
+//  IA(event)               { procs: list[str], msgs: dict[str, str], seen_sends: dict[str, list[str]] }
+//  IA(send_event)          { procs: list[str], msgs: dict[str, str], seen_sends: dict[str, list[str]] }
+//  IA(recv_event)          { procs: list[str], msgs: dict[str, str], seen_sends: dict[str, list[str]] }
+
+//  SA(event)               { sends: dict[str, list[str]] }
+//  SA(send_event)          { sends: dict[str, list[str]] }
+//  SA(recv_event)          { sends: dict[str, list[str]] }
+//  SA(process_list)        { names: list[str] }
 
 // --------------------------------------------------------------------------
 // Program structure
 // -------------------------------------------------------------------------- */
 
-//  SA { procs, msgs }   ER inherited by every child block
-//  CC $processes_block <= 1 -> "duplicate Processes block"
-//     $messages_block  <= 1 -> "duplicate Messages block"
-//     $history_block   <= 1 -> "duplicate History block"
+//  ER start.procs = [p for b in children(processes_block) for p in b.procs]
+//  ER start.msgs  = {k: v for b in children(messages_block) for k, v in b.msgs.items()}
+//  CC assert len(children(processes_block)) <= 1, "duplicate Processes block"
+//  CC assert len(children(messages_block))  <= 1, "duplicate Messages block"
+//  CC assert len(children(history_block))   <= 1, "duplicate History block"
 start            :  (processes_block | messages_block | history_block)*
 
 // --------------------------------------------------------------------------
 // Blocks
 // -------------------------------------------------------------------------- */
 
-//  SA { procs }
-//  CC len(procs) == $process_declaration -> "duplicate process declaration: '<name>'"
+//  ER processes_block.procs = [d.name for d in children(process_declaration)]
+//  CC assert len(set(processes_block.procs)) == len(processes_block.procs), "duplicate process declaration"
 processes_block  : _PROCESSES "{" process_declaration* "}"
 
-//  SA { msgs }
-//  CC len(msgs) == $message_decl -> "duplicate message declaration: '<name>'"
+//  ER messages_block.msgs = {k: v for d in children(message_decl) for k, v in d.entry.items()}
+//  CC assert len(messages_block.msgs) == len(children(message_decl)), "duplicate message declaration"
 messages_block   : _MESSAGES "{" message_decl* "}"
 
-//  SA { msgs }   ER { str(message_name): str(message_value) }
+//  ER message_decl.entry = {message_name.name: message_value.value}
 message_decl     : message_name _DEFINED message_value
 
-//  IA { procs, msgs }
-//  ER event[1].seen_sends = {}
-//     event[k].seen_sends = event[k-1].seen_sends | event[k-1].sends
+//  ER evts = children(event)
+//  ER evts[0].seen_sends = {}
+//  ER for k in range(1, len(evts)):
+//         evts[k].seen_sends = evts[k-1].seen_sends | evts[k-1].sends
 history_block    : _HISTORY "{"  event* "}"
 
 // --------------------------------------------------------------------------
 // History events
 // -------------------------------------------------------------------------- */
 
-//  SA { sends }   IA { procs, msgs, seen_sends }
-//  ER sends = send_event.sends | recv_event.sends
+//  ER event.sends = send_event.sends   # on the send_event alternative
+//  ER event.sends = recv_event.sends   # on the recv_event alternative
 event            : send_event
                  | recv_event
 
+//  ER send_event.sends = {event_identifier.name: process_list.names}
+//  CC assert message_identifier.name in send_event.msgs, f"undeclared message: '{message_identifier.name}'"
+//  CC assert process_identifier.name in send_event.procs, f"undeclared process: '{process_identifier.name}'"
+//  CC for p in process_list.names:
+//         assert p in send_event.procs, f"undeclared process: '{p}'"
+//  CC assert event_identifier.name not in send_event.seen_sends, f"duplicate event declaration: '{event_identifier.name}'"
 //  m2 := Send(ack) :: q -> p, q, r   (multicast allowed)
-//  SA { sends }   IA { procs, msgs, seen_sends }
-//  ER sends = { str(event_identifier): process_list.names }
-//  CC str(message_identifier) in msgs -> "undeclared message: '<name>'"
-//     str(process_identifier) in procs -> "undeclared process: '<name>'"
-//     all(p in procs for p in process_list.names) -> "undeclared process: '<name>'"
-//     str(event_identifier) not in seen_sends -> "duplicate event declaration: '<name>'"
 send_event       : event_identifier _DEFINED _SEND "(" message_identifier ")" _IN process_identifier _TO process_list
 
 //  Recv(m1) :: q   (kept as one event even for several processes)
-//  SA { sends = {} }   IA { procs, msgs, seen_sends }
-//  CC str(event_identifier) in seen_sends -> "undeclared send event: '<name>'"
-//     all(p in procs for p in process_list.names) -> "undeclared process: '<name>'"
-//     all(p in seen_sends[str(event_identifier)] for p in process_list.names)
-//       -> "process '<name>' is not a recipient of send event '<name>'"
+//  ER recv_event.sends = {}
+//  CC assert event_identifier.name in recv_event.seen_sends, f"undeclared send event: '{event_identifier.name}'"
+//  CC for p in process_list.names:
+//         assert p in recv_event.procs, f"undeclared process: '{p}'"
+//         assert p in recv_event.seen_sends[event_identifier.name], (
+//             f"process '{p}' is not a recipient of send event '{event_identifier.name}'")
 recv_event       : _RECV "(" event_identifier ")" _IN process_list
 
-//  SA { names }   ER names = [str(p) for p in @process_identifier]
+//  ER process_list.names = [p.name for p in children(process_identifier)]
 process_list     : process_identifier ("," process_identifier)*
 
 // --------------------------------------------------------------------------
 
-//  Leaves: lexval is the source text; no attributes.
-
+//  SA(process_declaration) { name: str }
 process_declaration : IDENTIFIER
+//  SA(message_name)        { name: str }
 message_name        : IDENTIFIER
+//  SA(message_identifier)  { name: str }
 message_identifier  : IDENTIFIER
+//  SA(message_value)       { value: str }
 message_value       : STRING
+//  SA(event_identifier)    { name: str }
 event_identifier    : IDENTIFIER
+//  SA(process_identifier)  { name: str }
 process_identifier  : IDENTIFIER
 
 STRING : /".*?"/
