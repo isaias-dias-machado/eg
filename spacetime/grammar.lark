@@ -94,14 +94,15 @@ history_block    : _HISTORY "{"  event* "}"
 // History events
 // -------------------------------------------------------------------------- */
 
-//  ER event.sends = send_event.sends   # on the send_event alternative
-//  ER event.sends = recv_event.sends   # on the recv_event alternative
+// case send_event
+//  ER event.sends[send_event.sends.key()] = send_event.sends
 //  ER send_event.procs      = event.procs
 //  ER send_event.msgs       = event.msgs
-//  ER send_event.seen_sends = event.seen_sends
+//  ER send_event.seen_sends = event.sends
+// case recv_event
 //  ER recv_event.procs      = event.procs
 //  ER recv_event.msgs       = event.msgs
-//  ER recv_event.seen_sends = event.seen_sends
+//  ER recv_event.seen_sends = event.sends
 event            : send_event
                  | recv_event
 
@@ -110,17 +111,16 @@ event            : send_event
 //  CC assert process_identifier.name in send_event.procs, f"undeclared process: '{process_identifier.name}'"
 //  CC for p in process_list.names:
 //         assert p in send_event.procs, f"undeclared process: '{p}'"
-//  CC assert event_identifier.name not in send_event.seen_sends, f"duplicate event declaration: '{event_identifier.name}'"
 //  m2 := Send(ack) :: q -> p, q, r   (multicast allowed)
 send_event       : event_identifier _DEFINED _SEND "(" message_identifier ")" _IN process_identifier _TO process_list
 
-//  Recv(m1) :: q   (kept as one event even for several processes)
 //  ER recv_event.sends = {}
-//  CC assert event_identifier.name in recv_event.seen_sends, f"undeclared send event: '{event_identifier.name}'"
+//  CC assert event_identifier.name in recv_event.sends, f"undeclared send event: '{event_identifier.name}'"
 //  CC for p in process_list.names:
 //         assert p in recv_event.procs, f"undeclared process: '{p}'"
 //         assert p in recv_event.seen_sends[event_identifier.name], (
 //             f"process '{p}' is not a recipient of send event '{event_identifier.name}'")
+//  Recv(m1) :: q   (kept as one event even for several processes)
 recv_event       : _RECV "(" event_identifier ")" _IN process_list
 
 //  ER process_list.names = [p.name for p in children(process_identifier)]
