@@ -9,6 +9,8 @@
 //                          once is referenced directly by name, e.g.
 //                          message_identifier.name.
 // CC assert <cond>, f"msg" context condition, as a plain Python assert
+// An IA of a child rule is defined by an ER on the parent rule, e.g.
+// send_event.procs = event.procs.
 //
 // procs       declared process names, in declaration order
 // msgs        message name -> payload
@@ -56,6 +58,9 @@
 
 //  ER start.procs = [p for b in children(processes_block) for p in b.procs]
 //  ER start.msgs  = {k: v for b in children(messages_block) for k, v in b.msgs.items()}
+//  ER for b in children(history_block):
+//         b.procs = start.procs
+//         b.msgs  = start.msgs
 //  CC assert len(children(processes_block)) <= 1, "duplicate Processes block"
 //  CC assert len(children(messages_block))  <= 1, "duplicate Messages block"
 //  CC assert len(children(history_block))   <= 1, "duplicate History block"
@@ -76,7 +81,10 @@ messages_block   : _MESSAGES "{" message_decl* "}"
 //  ER message_decl.entry = {message_name.name: message_value.value}
 message_decl     : message_name _DEFINED message_value
 
-//  ER evts = children(event)
+//  ER evts = children(history_block)
+//  ER for e in evts:
+//         e.procs = history_block.procs
+//         e.msgs  = history_block.msgs
 //  ER evts[0].seen_sends = {}
 //  ER for k in range(1, len(evts)):
 //         evts[k].seen_sends = evts[k-1].seen_sends | evts[k-1].sends
@@ -88,6 +96,12 @@ history_block    : _HISTORY "{"  event* "}"
 
 //  ER event.sends = send_event.sends   # on the send_event alternative
 //  ER event.sends = recv_event.sends   # on the recv_event alternative
+//  ER send_event.procs      = event.procs
+//  ER send_event.msgs       = event.msgs
+//  ER send_event.seen_sends = event.seen_sends
+//  ER recv_event.procs      = event.procs
+//  ER recv_event.msgs       = event.msgs
+//  ER recv_event.seen_sends = event.seen_sends
 event            : send_event
                  | recv_event
 
