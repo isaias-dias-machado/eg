@@ -1,29 +1,29 @@
 // --------------------------------------------------------------------------
 // Syntax + semantics: an attribute grammar in comments (LarkAG notation)
 // --------------------------------------------------------------------------
-// SA/IA: synthesized/inherited attributes.  ER: evaluation rules.
-// CC: context conditions; a failing CC aborts with the message after
-// `->`.  sym.attr references an attribute; $sym/@sym count/list the
-// occurrences of a repeated symbol.
+// SA/IA: synthesized/inherited attributes
+// ER: evaluation rules.
+// CC: context conditions
+//
+// -> represents a key-value relation
 //
 // procs       declared process names
 // msgs        message name -> payload
-// all_sends   send-event name -> recipients (whole history)
-// seen_sends  same, restricted to sends before the current position
+// seen_sends  send-event name -> recipients, for the sends seen so far
 //
-// Blocks may appear in any order, so procs/msgs/all_sends are
-// synthesized up to `start` and inherited back down; seen_sends is
-// inherited along the event list in source order.  Process, message
-// and event names are separate namespaces.  Pure syntax errors (e.g.
-// tests/fixtures/invalid/syntax_error.st) are rejected by the CFG
-// itself, before any attribute is evaluated.
+// Blocks may appear in any order, so procs/msgs are
+// synthesized up to `start` and inherited back down.
+// `seen_sends` is inherited along the event list in source order.  Process,
+// message and event names are separate namespaces.  Pure syntax errors (e.g.
+// tests/fixtures/invalid/syntax_error.st) are rejected by the CFG itself,
+// before any attribute is evaluated.
 // --------------------------------------------------------------------------
 
 // --------------------------------------------------------------------------
 // Program structure
 // -------------------------------------------------------------------------- */
 
-//  SA { procs, msgs, all_sends }   ER inherited by every child block
+//  SA { procs, msgs }   ER inherited by every child block
 //  CC $processes_block <= 1 -> "duplicate Processes block"
 //     $messages_block  <= 1 -> "duplicate Messages block"
 //     $history_block   <= 1 -> "duplicate History block"
@@ -44,9 +44,8 @@ messages_block   : _MESSAGES "{" message_decl* "}"
 //  SA { msgs }   ER { str(message_name): str(message_value) }
 message_decl     : message_name _DEFINED message_value
 
-//  SA { all_sends }   IA { procs, msgs, all_sends }
-//  ER all_sends = union(e.sends for e in @event)
-//     event[1].seen_sends = {}
+//  IA { procs, msgs }
+//  ER event[1].seen_sends = {}
 //     event[k].seen_sends = event[k-1].seen_sends | event[k-1].sends
 history_block    : _HISTORY "{"  event* "}"
 
@@ -54,26 +53,25 @@ history_block    : _HISTORY "{"  event* "}"
 // History events
 // -------------------------------------------------------------------------- */
 
-//  SA { sends }   IA { procs, msgs, all_sends, seen_sends }
+//  SA { sends }   IA { procs, msgs, seen_sends }
 //  ER sends = send_event.sends | recv_event.sends
 event            : send_event
                  | recv_event
 
 //  m2 := Send(ack) :: q -> p, q, r   (multicast allowed)
-//  SA { sends }   IA { procs, msgs, all_sends }
+//  SA { sends }   IA { procs, msgs, seen_sends }
 //  ER sends = { str(event_identifier): process_list.names }
 //  CC str(message_identifier) in msgs -> "undeclared message: '<name>'"
 //     str(process_identifier) in procs -> "undeclared process: '<name>'"
 //     all(p in procs for p in process_list.names) -> "undeclared process: '<name>'"
-//     str(event_identifier) not in all_sends -> "duplicate event declaration: '<name>'"
+//     str(event_identifier) not in seen_sends -> "duplicate event declaration: '<name>'"
 send_event       : event_identifier _DEFINED _SEND "(" message_identifier ")" _IN process_identifier _TO process_list
 
 //  Recv(m1) :: q   (kept as one event even for several processes)
-//  SA { sends = {} }   IA { procs, msgs, all_sends, seen_sends }
-//  CC str(event_identifier) in all_sends -> "undeclared send event: '<name>'"
-//     str(event_identifier) in seen_sends -> "receive refers to send event declared later: '<name>'"
+//  SA { sends = {} }   IA { procs, msgs, seen_sends }
+//  CC str(event_identifier) in seen_sends -> "undeclared send event: '<name>'"
 //     all(p in procs for p in process_list.names) -> "undeclared process: '<name>'"
-//     all(p in all_sends[str(event_identifier)] for p in process_list.names)
+//     all(p in seen_sends[str(event_identifier)] for p in process_list.names)
 //       -> "process '<name>' is not a recipient of send event '<name>'"
 recv_event       : _RECV "(" event_identifier ")" _IN process_list
 

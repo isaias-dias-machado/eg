@@ -23,7 +23,7 @@ INVALID_CASES = {
     "undeclared_send_recipient.st": "undeclared process: 'q'",
     "undeclared_recv_process.st": "undeclared process: 'r'",
     "undefined_event.st": "undeclared send event: 'm9'",
-    "later_event.st": "receive refers to send event declared later: 'm1'",
+    "later_event.st": "undeclared send event: 'm1'",
     "recv_not_recipient.st": "process 'r' is not a recipient of send event 'm1'",
 }
 
@@ -38,20 +38,6 @@ def test_invalid_programs(filename: str, message: str) -> None:
 
     with pytest.raises(SemanticError, match=message):
         compile_source(source, source_name=filename)
-
-
-def test_undefined_and_later_event_errors_are_distinct() -> None:
-    undefined = (FIXTURES / "invalid" / "undefined_event.st").read_text()
-    later = (FIXTURES / "invalid" / "later_event.st").read_text()
-
-    with pytest.raises(SemanticError) as undefined_error:
-        compile_source(undefined)
-    with pytest.raises(SemanticError) as later_error:
-        compile_source(later)
-
-    assert str(undefined_error.value) != str(later_error.value)
-    assert "undeclared" in str(undefined_error.value)
-    assert "declared later" in str(later_error.value)
 
 
 def test_missing_history_is_valid() -> None:

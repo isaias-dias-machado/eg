@@ -40,13 +40,10 @@ def _validate_process(process: Ident, process_names: set[str]) -> None:
 def create_refined_ast(ast: Ast) -> RefinedAst:
     """Resolve and validate a raw ``Ast``.
 
-    Works in three passes:
+    Works in two passes:
 
     1. collect declared process names and message payloads;
-    2. collect all send-event names, so a receive that refers to a later
-       event can be reported differently from one that refers to no event
-       at all;
-    3. walk the history in source order, validating each event and building
+    2. walk the history in source order, validating each event and building
        its refined counterpart.
 
     Invariants of the result:
@@ -60,9 +57,9 @@ def create_refined_ast(ast: Ast) -> RefinedAst:
 
     Failure modes:
         Raises :class:`SemanticError` for duplicate event names, undeclared
-        messages or processes, undeclared send events, receives that refer
-        to a later send event, and receives from non-recipients. Raises
-        :class:`TypeError` if the history holds a node that is neither
+        messages or processes, undeclared send events (a receive may only
+        refer to a send that precedes it), and receives from non-recipients.
+        Raises :class:`TypeError` if the history holds a node that is neither
         ``SendEvent`` nor ``RecvEvent`` (a builder/grammar drift, i.e. an
         internal invariant violation).
     """
@@ -71,20 +68,6 @@ def create_refined_ast(ast: Ast) -> RefinedAst:
         declaration.name.name: declaration.value
         for declaration in ast.message_declarations
     }
-
-    # First pass: index every send by its event name. This must happen
-    # before resolution so that "declared later" and "never declared" are
-    # distinguishable errors for receives.
-    all_send_names: dict[str, SendEvent] = {}
-    for event in ast.history.events:
-        if isinstance(event, SendEvent):
-            name = event.name.name
-            if name in all_send_names:
-                raise SemanticError(
-                    f"duplicate event declaration: '{name}'",
-                    location=event.name.location,
-                )
-            all_send_names[name] = event
 
     # Sends already seen by the current walk. A receive may only point at
     # one of these, which enforces causality (a receive cannot precede its
@@ -95,6 +78,13 @@ def create_refined_ast(ast: Ast) -> RefinedAst:
     for temporal_pos, event in enumerate(ast.history.events):
         match event:
             case SendEvent():
+                name = event.name.name
+                if name in resolved_sends:
+                    raise SemanticError(
+                        f"duplicate event declaration: '{name}'",
+                        location=event.name.location,
+                    )
+
                 message_name = event.message_id.name
                 if message_name not in message_by_name:
                     raise SemanticError(
@@ -121,16 +111,9 @@ def create_refined_ast(ast: Ast) -> RefinedAst:
 
             case RecvEvent():
                 send_name = event.send_event_ref.name
-                if send_name not in all_send_names:
-                    raise SemanticError(
-                        f"undeclared send event: '{send_name}'",
-                        location=event.send_event_ref.location,
-                    )
-                # Known event, but not yet walked: it appears later in the
-                # history, which would reverse the intended causality.
                 if send_name not in resolved_sends:
                     raise SemanticError(
-                        f"receive refers to send event declared later: '{send_name}'",
+                        f"undeclared send event: '{send_name}'",
                         location=event.send_event_ref.location,
                     )
 
