@@ -1,159 +1,88 @@
 // --------------------------------------------------------------------------
-// Semantic specification (attribute grammar, in comments)
+// Syntax + semantics: an attribute grammar in comments (LarkAG notation)
 // --------------------------------------------------------------------------
-// The rules below define the syntax.  The semantic rules are specified
-// in this same file as an attribute grammar (AG) in LarkAG notation,
-// one comment block per production, so this grammar is the entire
-// language specification.
+// SA/IA: synthesized/inherited attributes.  ER: evaluation rules.
+// CC: context conditions; a failing CC aborts with the message after
+// `->`.  sym.attr references an attribute; $sym/@sym count/list the
+// occurrences of a repeated symbol.
 //
-// Notation (as in LarkAG):
-//   SA(x) / IA(x)  synthesized / inherited attributes of non-terminal x
-//   sym.attr       attribute of a symbol; sym[k] selects the k-th
-//                  occurrence of a repeated symbol (the left-hand side
-//                  counts as occurrence 1)
-//   $sym / @sym    number / list of occurrences of a repeated symbol
-//   ER             evaluation rules
-//   CC             context conditions; a failing CC aborts compilation
-//                  with the message given after `->`
+// procs       declared process names
+// msgs        message name -> payload
+// all_sends   send-event name -> recipients (whole history)
+// seen_sends  same, restricted to sends before the current position
 //
-// Attributes:
-//   procs       set of declared process names
-//   msgs        dict, message name -> payload
-//   all_sends   dict, send-event name -> recipient names (whole history)
-//   seen_sends  dict, send-event name -> recipients, restricted to the
-//               sends that precede the current position in history order
-//   sends       dict holding the single send introduced by an event
-//               (empty for a receive)
-//   names       list of the process names in a process list
-//
-// Process, message, and event names live in separate namespaces: a
-// message may share its name with a process or with a send event.
-//
-// Evaluation strategy: blocks may appear in any order, so declarations
-// cannot flow through the tree in a single pass.  procs, msgs and
-// all_sends are first synthesized up to `start`, then inherited back
-// down into the history; seen_sends is inherited along the event list
-// in source order, which distinguishes a receive that refers to a
-// later send from one that refers to no send at all.
-//
-// Semantic rules in prose:
-//   - no undeclared usages (of processes, messages, or send events)
-//   - no duplicate declarations (of processes, messages, or send events)
-//   - at most one Processes, Messages, or History block
-//   - a receive may only name processes the referenced send targeted
-//   - a receive must follow its send in history order
-//
-// The CC messages are the exact error strings the compiler emits;
-// tests/test_semantics.py pins each one to a fixture in
-// tests/fixtures/invalid/.  Purely syntactic violations (e.g. an
-// unclosed block, as in tests/fixtures/invalid/syntax_error.st) are
-// rejected by the context-free rules themselves, before any attribute
-// is evaluated.
+// Blocks may appear in any order, so procs/msgs/all_sends are
+// synthesized up to `start` and inherited back down; seen_sends is
+// inherited along the event list in source order.  Process, message
+// and event names are separate namespaces.  Pure syntax errors (e.g.
+// tests/fixtures/invalid/syntax_error.st) are rejected by the CFG
+// itself, before any attribute is evaluated.
 // --------------------------------------------------------------------------
 
 // --------------------------------------------------------------------------
 // Program structure
 // -------------------------------------------------------------------------- */
 
-//  AG — start
-//  SA(start) { procs, msgs, all_sends }
-//  ER  start.procs     = union(b.procs      for b in @processes_block)
-//      start.msgs      = union(b.msgs       for b in @messages_block)
-//      start.all_sends = union(b.all_sends for b in @history_block)
-//      b.procs, b.msgs, b.all_sends
-//        = start.procs, start.msgs, start.all_sends, for every child b
-//  CC  $processes_block <= 1 -> "duplicate Processes block"
-//      $messages_block  <= 1 -> "duplicate Messages block"
-//      $history_block   <= 1 -> "duplicate History block"
+//  SA { procs, msgs, all_sends }   ER inherited by every child block
+//  CC $processes_block <= 1 -> "duplicate Processes block"
+//     $messages_block  <= 1 -> "duplicate Messages block"
+//     $history_block   <= 1 -> "duplicate History block"
 start            :  (processes_block | messages_block | history_block)*
 
 // --------------------------------------------------------------------------
 // Blocks
 // -------------------------------------------------------------------------- */
 
-//  AG — processes_block
 //  SA { procs }
-//  ER  processes_block.procs = { str(d) for d in @process_declaration }
-//  CC  len(processes_block.procs) == $process_declaration
-//        -> "duplicate process declaration: '<name>'"
+//  CC len(procs) == $process_declaration -> "duplicate process declaration: '<name>'"
 processes_block  : _PROCESSES "{" process_declaration* "}"
 
-//  AG — messages_block
 //  SA { msgs }
-//  ER  messages_block.msgs = union(d.msgs for d in @message_decl)
+//  CC len(msgs) == $message_decl -> "duplicate message declaration: '<name>'"
 messages_block   : _MESSAGES "{" message_decl* "}"
 
-//  AG — message_decl
-//  SA { msgs }
-//  ER  message_decl.msgs = { str(message_name): str(message_value) }
+//  SA { msgs }   ER { str(message_name): str(message_value) }
 message_decl     : message_name _DEFINED message_value
 
-//  AG — history_block
 //  SA { all_sends }   IA { procs, msgs, all_sends }
-//  ER  history_block.all_sends = union(e.sends for e in @event)
-//      event[1].seen_sends = {}
-//      event[k].seen_sends = event[k-1].seen_sends | event[k-1].sends
-//      event.procs, event.msgs, event.all_sends
-//        = history_block.procs, history_block.msgs, history_block.all_sends
+//  ER all_sends = union(e.sends for e in @event)
+//     event[1].seen_sends = {}
+//     event[k].seen_sends = event[k-1].seen_sends | event[k-1].sends
 history_block    : _HISTORY "{"  event* "}"
 
 // --------------------------------------------------------------------------
 // History events
 // -------------------------------------------------------------------------- */
 
-//  AG — event
 //  SA { sends }   IA { procs, msgs, all_sends, seen_sends }
-//  ER  event.sends = send_event.sends | recv_event.sends
+//  ER sends = send_event.sends | recv_event.sends
 event            : send_event
                  | recv_event
 
-//  Send — e.g.
-//      m2 := Send(ack) :: q -> p, q, r
-//  Binds the event name to the sending of a declared message by a
-//  declared process to every process in the target list; a target
-//  list with several names denotes a multicast.
-//
-//  AG — send_event
-//  SA { sends }   IA { procs, msgs, all_sends, seen_sends }
-//  ER  send_event.sends = { str(event_identifier): process_list.names }
-//  CC  str(message_identifier) in msgs
-//        -> "undeclared message: '<name>'"
-//      str(process_identifier) in procs
-//        -> "undeclared process: '<name>'"  (the sender)
-//      all(p in procs for p in process_list.names)
-//        -> "undeclared process: '<name>'"  (a recipient)
-//      str(event_identifier) not in all_sends
-//        -> "duplicate event declaration: '<name>'"
+//  m2 := Send(ack) :: q -> p, q, r   (multicast allowed)
+//  SA { sends }   IA { procs, msgs, all_sends }
+//  ER sends = { str(event_identifier): process_list.names }
+//  CC str(message_identifier) in msgs -> "undeclared message: '<name>'"
+//     str(process_identifier) in procs -> "undeclared process: '<name>'"
+//     all(p in procs for p in process_list.names) -> "undeclared process: '<name>'"
+//     str(event_identifier) not in all_sends -> "duplicate event declaration: '<name>'"
 send_event       : event_identifier _DEFINED _SEND "(" message_identifier ")" _IN process_identifier _TO process_list
 
-//  Recv — e.g.
-//      Recv(m1) :: q
-//      Recv(m2) :: p, q
-//  Records that every process in the list received the message bound
-//  to the referenced event.  This version keeps a multi-process receive
-//  as one history event; it does not expand it into separate events.
-//
-//  AG — recv_event
+//  Recv(m1) :: q   (kept as one event even for several processes)
 //  SA { sends = {} }   IA { procs, msgs, all_sends, seen_sends }
-//  CC  str(event_identifier) in all_sends
-//        -> "undeclared send event: '<name>'"
-//      str(event_identifier) in seen_sends
-//        -> "receive refers to send event declared later: '<name>'"
-//      all(p in procs for p in process_list.names)
-//        -> "undeclared process: '<name>'"
-//      all(p in all_sends[str(event_identifier)] for p in process_list.names)
-//        -> "process '<name>' is not a recipient of send event '<name>'"
+//  CC str(event_identifier) in all_sends -> "undeclared send event: '<name>'"
+//     str(event_identifier) in seen_sends -> "receive refers to send event declared later: '<name>'"
+//     all(p in procs for p in process_list.names) -> "undeclared process: '<name>'"
+//     all(p in all_sends[str(event_identifier)] for p in process_list.names)
+//       -> "process '<name>' is not a recipient of send event '<name>'"
 recv_event       : _RECV "(" event_identifier ")" _IN process_list
 
-//  AG — process_list
-//  SA { names }
-//  ER  process_list.names = [str(p) for p in @process_identifier]
+//  SA { names }   ER names = [str(p) for p in @process_identifier]
 process_list     : process_identifier ("," process_identifier)*
 
 // --------------------------------------------------------------------------
 
-//  Identifier and string leaves carry no attributes; their lexval is
-//  their source text.
+//  Leaves: lexval is the source text; no attributes.
 
 process_declaration : IDENTIFIER
 message_name        : IDENTIFIER
