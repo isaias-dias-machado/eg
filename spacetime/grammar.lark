@@ -4,7 +4,7 @@
 
 start            : _block_list
 
-_block_list         : (_newlines _block _newlines)*
+_block_list         : _block*
 
 _block              : processes_block
                      | messages_block
@@ -14,17 +14,17 @@ _block              : processes_block
 // Blocks
 // -------------------------------------------------------------------------- */
 
-processes_block    : _PROCESSES "{" _newlines _process_decl_list "}"
+processes_block    : _PROCESSES "{" _process_decl_list "}"
 
-_process_decl_list  : (process_declaration _newlines)*
+_process_decl_list  : process_declaration*
 
-messages_block     : _MESSAGES "{" _newlines _message_decl_list _newlines "}"
+messages_block     : _MESSAGES "{" _message_decl_list "}"
 
-_message_decl_list  : (message_decl _newlines)*
+_message_decl_list  : message_decl*
 
 message_decl       : message_name _DEFINED message_value
 
-history_block      : _HISTORY "{" _newlines _event_list _newlines "}"
+history_block      : _HISTORY "{" _event_list "}"
 
 _event_list         : (event)*
 
@@ -32,8 +32,8 @@ _event_list         : (event)*
 // History events
 // -------------------------------------------------------------------------- */
 
-event              : send_event _newlines
-                   | recv_event _newlines
+event              : send_event
+                   | recv_event
 
 //  Send — e.g.
 //      m2 := Send(ack) :: q -> p, q, r
@@ -71,9 +71,6 @@ process_identifier : IDENTIFIER
 //  character may appear between the quotes except the double quote
 //  itself and a line terminator; there are no escape sequences.        */
 
-_newlines : _NL _newlines
-          |
-
 STRING : /".*?"/
 IDENTIFIER : /[a-z][a-zA-Z0-9_]*/
 
@@ -87,4 +84,4 @@ _DEFINED: ":="
 _SEND: "Send"
 _RECV: "Recv"
 
-%ignore /[ \t]/
+%ignore /[ \t\n]/
