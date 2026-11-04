@@ -2,86 +2,66 @@
 // Program structure
 // -------------------------------------------------------------------------- */
 
-start            : _block_list
-
-_block_list         : _block*
-
-_block              : processes_block
-                     | messages_block
-                     | history_block
+start            :  (processes_block | messages_block | history_block)*
 
 // --------------------------------------------------------------------------
 // Blocks
 // -------------------------------------------------------------------------- */
 
-processes_block    : _PROCESSES "{" _process_decl_list "}"
+processes_block  : _PROCESSES "{" process_declaration* "}"
 
-_process_decl_list  : process_declaration*
+messages_block   : _MESSAGES "{" message_decl* "}"
 
-messages_block     : _MESSAGES "{" _message_decl_list "}"
+message_decl     : message_name _DEFINED message_value
 
-_message_decl_list  : message_decl*
-
-message_decl       : message_name _DEFINED message_value
-
-history_block      : _HISTORY "{" _event_list "}"
-
-_event_list         : (event)*
+history_block    : _HISTORY "{"  event* "}"
 
 // --------------------------------------------------------------------------
 // History events
-// -------------------------------------------------------------------------- */
+// --------------------------------------------------------------------------
 
-event              : send_event
-                   | recv_event
+event            : send_event
+                 | recv_event
 
 //  Send — e.g.
 //      m2 := Send(ack) :: q -> p, q, r
 //  Binds the event name to the sending of a declared message by a
 //  declared process to every process in the target list; a target
-//  list with several names denotes a multicast.                        */
-
-send_event         : event_identifier _DEFINED _SEND "(" message_identifier ")" _IN process_identifier _TO process_list
+//  list with several names denotes a multicast.
+send_event       : event_identifier _DEFINED _SEND "(" message_identifier ")" _IN process_identifier _TO process_list
 
 //  Recv — e.g.
 //      Recv(m1) :: q
 //      Recv(m2) :: p, q
 //  Records that every process in the list received the message bound
 //  to the referenced event.  This version keeps a multi-process receive
-//  as one history event; it does not expand it into separate events.    */
+//  as one history event; it does not expand it into separate events.
+recv_event       : _RECV "(" event_identifier ")" _IN process_list
 
-recv_event         : _RECV "(" event_identifier ")" _IN process_list
-
-process_list       : process_identifier ("," process_identifier)*
-
-//  All three name spaces are plain identifiers syntactically.            */
-
-process_declaration : IDENTIFIER
-message_name : IDENTIFIER
-message_identifier : IDENTIFIER
-message_value      : STRING
-event_identifier   : IDENTIFIER
-process_identifier : IDENTIFIER
+process_list     : process_identifier ("," process_identifier)*
 
 // --------------------------------------------------------------------------
-// Lexical syntax
-// -------------------------------------------------------------------------- */
 
-//  String literal — a double-quoted sequence of characters.  Any
-//  character may appear between the quotes except the double quote
-//  itself and a line terminator; there are no escape sequences.        */
+process_declaration : IDENTIFIER
+message_name        : IDENTIFIER
+message_identifier  : IDENTIFIER
+message_value       : STRING
+event_identifier    : IDENTIFIER
+process_identifier  : IDENTIFIER
 
 STRING : /".*?"/
 IDENTIFIER : /[a-z][a-zA-Z0-9_]*/
 
-_NL : /\r?\n/
-_PROCESSES: "Processes"
-_MESSAGES: "Messages"
-_HISTORY: "History"
-_IN: "::"
-_TO: "->"
-_DEFINED: ":="
-_SEND: "Send"
-_RECV: "Recv"
+_PROCESSES  : "Processes"
+_MESSAGES   : "Messages"
+_HISTORY    : "History"
+_IN         : "::"
+_TO         : "->"
+_DEFINED    : ":="
+_SEND       : "Send"
+_RECV       : "Recv"
 
 %ignore /[ \t\n]/
+
+// ingore comments
+%ignore /\/\/[^\n\r]*/ | /\/\*([^*]|\*[^\/])*\*\//
