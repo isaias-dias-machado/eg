@@ -74,4 +74,4 @@ History {
 
 Results in:
 
-[Space time diagram](./docs/sample.svg)
+![Space time diagram](./docs/sample.svg)
