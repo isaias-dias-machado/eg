@@ -2,7 +2,7 @@
 #
 # The importable package is `spacetime/` (flat layout, repo root); the
 # distribution is named `spacetime-dsl` only to avoid colliding with the
-# unrelated `spacetime` project on PyPI. Nothing here is published yet.
+# unrelated `spacetime` project on PyPI.
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -10,8 +10,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spacetime-dsl"
-version = "0.1.0"
-description = "Compiler front-end for a DSL describing Lamport space-time diagrams"
+version = "0.1.1"
+description = "Compiler for a DSL describing Lamport space-time diagrams, from source file to SVG diagram"
 readme = "README.md"
 requires-python = ">=3.10"
 # Runtime dependencies only. `lark` is what spacetime/parser.py imports;
