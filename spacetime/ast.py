@@ -185,6 +185,7 @@ class SendEventRefined:
 
     temporal_pos: int
     message: str
+    message_type: int
     process_from_id: str
     processes_to_ids: list[str]
 

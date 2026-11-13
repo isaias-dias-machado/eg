@@ -14,6 +14,7 @@ from .ast import (
     Ast,
     HistoryRefined,
     Ident,
+    MessageDeclaration,
     RecvEvent,
     RecvEventRefined,
     RefinedAst,
@@ -74,6 +75,8 @@ def create_refined_ast(ast: Ast) -> RefinedAst:
     # send in history order).
     resolved_sends: dict[str, SendEventRefined] = {}
     refined_events: list[SendEventRefined | RecvEventRefined] = []
+    messages_seen: dict[str, int] = {}
+    messages_seen_count: int = 0
 
     for temporal_pos, event in enumerate(ast.history.events):
         match event:
@@ -91,6 +94,8 @@ def create_refined_ast(ast: Ast) -> RefinedAst:
                         f"undeclared message: '{message_name}'",
                         location=event.message_id.location,
                     )
+                messages_seen[message_name] = messages_seen_count
+                messages_seen_count += 1
 
                 _validate_process(event.process_from_id, process_names)
                 for recipient in event.processes_to_ids:
@@ -101,6 +106,7 @@ def create_refined_ast(ast: Ast) -> RefinedAst:
                 refined_event = SendEventRefined(
                     temporal_pos=temporal_pos,
                     message=message_by_name[message_name],
+                    message_type=1,
                     process_from_id=event.process_from_id.name,
                     processes_to_ids=[
                         recipient.name for recipient in event.processes_to_ids
