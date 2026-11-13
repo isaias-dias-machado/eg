@@ -1,8 +1,9 @@
 """Tests for the SVG backend (:func:`spacetime.svg.render_svg`).
 
-Covers the golden example (``example.st`` vs ``docs/sample_v2.svg``), the
-layout invariants from ``docs/svg_target.md``, the ``message_type``
-declaration-index semantics, edge cases, and the ``--to-svg`` CLI flag.
+Covers the golden example (``example.st`` vs ``docs/sample_v2.svg``,
+byte-exact), the layout invariants from ``docs/svg_target.md``, the
+caption legend, the ``message_type``/``message_name`` semantics, edge
+cases, and the ``--to-svg`` CLI flag.
 """
 
 import xml.etree.ElementTree as ET
@@ -20,69 +21,82 @@ def _parse(svg_text: str) -> ET.Element:
     return ET.fromstring(svg_text)
 
 
-def _strip_message_labels(root: ET.Element) -> ET.Element:
-    """Remove italic message-label ``<text>`` elements in place.
-
-    The golden file hand-tunes label text (abbreviated message names) and
-    x positions, so the golden comparison masks them; label content and
-    position are pinned by separate unit tests.
-    """
-    for parent in root.iter():
-        for child in list(parent):
-            if child.tag == NS + "text" and child.attrib.get("font-style") == "italic":
-                parent.remove(child)
-    return root
-
-
-def _assert_same_tree(actual: ET.Element, expected: ET.Element, path: str = "/svg") -> None:
-    assert actual.tag == expected.tag, path
-    assert actual.attrib == expected.attrib, f"{path}: {actual.attrib} != {expected.attrib}"
-    assert (actual.text or "").strip() == (expected.text or "").strip(), path
-    assert len(actual) == len(expected), f"{path}: child count {len(actual)} != {len(expected)}"
-    for index, (actual_child, expected_child) in enumerate(zip(actual, expected)):
-        _assert_same_tree(actual_child, expected_child, f"{path}/{actual_child.tag}[{index}]")
-
-
 def _elements(root: ET.Element, tag: str) -> list[ET.Element]:
     return root.findall(f".//{NS}{tag}")
 
 
-def test_golden_example_matches_sample_v2() -> None:
+def _caption(root: ET.Element) -> ET.Element | None:
+    """The ``<g id="caption">`` element, or ``None`` when absent."""
+    return root.find(f".//{NS}g[@id='caption']")
+
+
+def test_golden_example_matches_sample_v2_byte_exact() -> None:
     program = compile_file(ROOT / "example.st")
     rendered = render_svg(program)
     golden = (ROOT / "docs" / "sample_v2.svg").read_text()
 
-    _assert_same_tree(
-        _strip_message_labels(_parse(rendered)),
-        _strip_message_labels(_parse(golden)),
-    )
+    assert rendered == golden
 
 
-def test_golden_example_labels_carry_payloads() -> None:
-    program = compile_file(ROOT / "example.st")
-    root = _parse(render_svg(program))
+def test_no_inline_message_labels_remain() -> None:
+    root = _parse(render_svg(compile_file(ROOT / "example.st")))
 
-    labels = [
+    italic = [
         element
         for element in _elements(root, "text")
         if element.attrib.get("font-style") == "italic"
     ]
-    assert [element.text for element in labels] == [
-        "Request o que quiser",
-        "Ack",
-        "Request o que quiser",
-    ]
-    assert [element.attrib["fill"] for element in labels] == [
-        "#5b7fa6",
-        "#6f9a76",
-        "#5b7fa6",
-    ]
+    assert italic == []
+
+
+def test_caption_decodes_used_message_types_in_palette_order() -> None:
+    root = _parse(render_svg(compile_file(ROOT / "example.st")))
+
+    caption = _caption(root)
+    assert caption is not None
+    entries = list(caption)
+    assert len(entries) == 4  # two swatch + text pairs
+
+    swatches = [e for e in entries if e.tag == NS + "rect"]
+    texts = [e for e in entries if e.tag == NS + "text"]
+    assert [s.attrib["fill"] for s in swatches] == ["#5b7fa6", "#6f9a76"]
+    assert [t.text for t in texts] == ["request", "ack"]
+    for swatch in swatches:
+        assert swatch.attrib["x"] == "48"
+        assert swatch.attrib["width"] == "24"
+        assert swatch.attrib["height"] == "3"
+    for text in texts:
+        assert text.attrib["x"] == "78"
+        assert text.attrib["font-size"] == "11"
+        assert text.attrib["fill"] == "#555"
+    # Entry lines at y = 340 and y = 358; swatches sit at text_y - 7.
+    assert [t.attrib["y"] for t in texts] == ["340", "358"]
+    assert [s.attrib["y"] for s in swatches] == ["333", "351"]
+
+
+def test_caption_sits_below_every_dot_and_loop() -> None:
+    root = _parse(render_svg(compile_file(ROOT / "example.st")))
+
+    caption = _caption(root)
+    assert caption is not None
+    caption_ys = [int(e.attrib["y"]) for e in caption if e.tag == NS + "text"]
+    max_dot_y = max(int(c.attrib["cy"]) for c in _elements(root, "circle"))
+    # Self-loops bulge 38 px below their lifeline.
+    assert min(caption_ys) > max_dot_y + 38
+
+
+def test_caption_absent_when_history_has_no_sends() -> None:
+    program = compile_source("Processes {\n  p\n  q\n}\n")
+    root = _parse(render_svg(program))
+
+    assert _caption(root) is None
+    assert root.attrib["viewBox"] == "0 0 360 220"
 
 
 def test_lifelines_are_horizontal_and_in_declaration_order() -> None:
     root = _parse(render_svg(compile_file(ROOT / "example.st")))
 
-    assert root.attrib["viewBox"] == "0 0 360 320"
+    assert root.attrib["viewBox"] == "0 0 360 378"
     lifelines = [
         element
         for element in _elements(root, "line")
@@ -201,6 +215,7 @@ History {
     )
     sends = [e for e in program.history.events if isinstance(e, SendEventRefined)]
     assert [send.message_type for send in sends] == [2, 0]
+    assert [send.message_name for send in sends] == ["vote", "request"]
 
 
 def test_palette_cycles_and_marker_is_per_palette_color() -> None:
@@ -237,7 +252,7 @@ History {
     assert marker_ids == {"t", "a1"}
 
 
-def test_label_position_is_arrow_midpoint_plus_offset() -> None:
+def test_caption_geometry_for_two_processes() -> None:
     program = compile_source(
         """Processes {
   p
@@ -258,16 +273,19 @@ History {
     )
     root = _parse(render_svg(program))
 
-    # m1 arrow: (70, 85) -> (140, 175); midpoint (105, 130); label at +7, +4.
-    labels = [
-        element
-        for element in _elements(root, "text")
-        if element.attrib.get("font-style") == "italic"
-    ]
-    assert len(labels) == 2
-    assert labels[0].attrib["x"] == "112"
-    assert labels[0].attrib["y"] == "134"
-    assert labels[0].text == "hello"
+    # One used message type: caption_y0 = 80 + 100 + 60 = 240, single entry
+    # at y = 240, H = 240 + 0 + 20 = 260.
+    assert root.attrib["viewBox"] == "0 0 360 260"
+    caption = _caption(root)
+    assert caption is not None
+    entries = list(caption)
+    assert len(entries) == 2
+    swatch, text = entries
+    assert swatch.tag == NS + "rect"
+    assert swatch.attrib["y"] == "233"
+    assert text.tag == NS + "text"
+    assert text.attrib["y"] == "240"
+    assert text.text == "m"
 
 
 def test_empty_history_renders_lifelines_only() -> None:
@@ -355,7 +373,7 @@ History {
     assert len(_elements(root, "circle")) == 1
 
 
-def test_payload_is_xml_escaped() -> None:
+def test_payload_special_chars_do_not_leak_into_svg() -> None:
     program = compile_source(
         """Processes {
   p
@@ -374,14 +392,12 @@ History {
     )
     svg_text = render_svg(program)
     root = _parse(svg_text)  # must stay parseable
-    labels = [
-        element
-        for element in _elements(root, "text")
-        if element.attrib.get("font-style") == "italic"
-    ]
-    assert labels[0].text == "a <b> & c"
-    assert "&lt;b&gt;" in svg_text
-    assert "&amp;" in svg_text
+    # The caption carries the message name, not the payload.
+    caption = _caption(root)
+    assert caption is not None
+    texts = [e for e in caption if e.tag == NS + "text"]
+    assert [t.text for t in texts] == ["m"]
+    assert "a <b> & c" not in svg_text
 
 
 def test_cli_to_svg_prints_svg(capsys) -> None:

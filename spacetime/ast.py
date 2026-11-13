@@ -168,12 +168,15 @@ class Ast:
 class SendEventRefined:
     """A send event after name resolution.
 
-    ``message`` is the payload string from the matching declaration rather
-    than the message name. The event's own name is intentionally dropped.
+    ``message`` is the payload string from the matching declaration and
+    ``message_name`` is the declared message name itself (kept for the SVG
+    caption legend, which decodes arrow colors by message name). The
+    event's own name is intentionally dropped.
 
     Invariants:
         - ``temporal_pos`` is the 0-based index of the event in
           ``HistoryRefined.events``.
+        - ``message_name`` names a declaration in the ``Messages`` block.
         - ``message_type`` is the 0-based declaration index of the message
           in the ``Messages`` block.
         - ``process_from_id`` and every entry in ``processes_to_ids`` name
@@ -187,6 +190,7 @@ class SendEventRefined:
 
     temporal_pos: int
     message: str
+    message_name: str
     message_type: int
     process_from_id: str
     processes_to_ids: list[str]

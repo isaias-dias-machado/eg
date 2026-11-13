@@ -102,11 +102,13 @@ def create_refined_ast(ast: Ast) -> RefinedAst:
                 for recipient in event.processes_to_ids:
                     _validate_process(recipient, process_names)
 
-                # The message name is replaced by its payload; the event
-                # name is dropped from the refined node on purpose.
+                # The payload is inlined into ``message``; the declared
+                # message name is kept in ``message_name`` for the SVG
+                # caption. The event name is dropped on purpose.
                 refined_event = SendEventRefined(
                     temporal_pos=temporal_pos,
                     message=message_by_name[message_name],
+                    message_name=message_name,
                     message_type=message_index[message_name],
                     process_from_id=event.process_from_id.name,
                     processes_to_ids=[

@@ -13,8 +13,9 @@ The renderer consumes a `RefinedAst` (output of
 - `process_declarations: list[str]` — process names in declaration order;
 - `history.events` — `SendEventRefined` / `RecvEventRefined`, ordered by
   `temporal_pos`:
-  - **send**: `message` (payload string), `message_type` (int),
-    `process_from_id`, `processes_to_ids` (multicast = several recipients);
+  - **send**: `message` (payload string), `message_name` (declared message
+    name), `message_type` (int), `process_from_id`, `processes_to_ids`
+    (multicast = several recipients);
   - **recv**: `related_send_event`, `process_ids` (a subset of the send's
     recipients; one dot per process).
 
@@ -30,10 +31,10 @@ The renderer consumes a `RefinedAst` (output of
 | `DY` | 100 | vertical gap between lifelines |
 | dot radius | 3 | |
 | arrow offset | 5 | solid arrows start/end 5 px short of a lifeline; dashed lost arrows end 8 px short (see `sample_v2.svg`: 272 = 280 − 8) |
-| viewBox | `0 0 W H` with `W = X_END + 60`, `H = Y0 + (n-1)*DY + 40` | `n` = number of processes |
+| viewBox | `0 0 W H` with `W = X_END + 60`; `H = caption_y0 + (k-1)*18 + 20` when `k` message types are used, else `H = Y0 + (n-1)*DY + 40` | `n` = number of processes; `caption_y0 = Y0 + (n-1)*DY + 60` |
 
-For 3 processes and 7 dots this gives `0 0 360 320`, exactly as in
-`sample_v2.svg`.
+For 3 processes, 7 dots and 2 used message types this gives `0 0 360 378`,
+exactly as in `sample_v2.svg`.
 
 ## Lifelines
 
@@ -94,18 +95,31 @@ matching fill. Colors must stay muted (desaturated); no bright primaries.
 it should become the message's 0-based declaration index in the
 `Messages` block.)
 
-### Labels
+### Caption
 
-One label per send event, placed at the midpoint of the arrow to the first
-recipient that receives it, offset by about `(+7, +4)`, `text-anchor`
-start, `font-size="11"`, italic, fill = the message color. The text is the
-payload `SendEventRefined.message` (`sample_v2.svg` abbreviates the
-payloads to the message names `request` / `ack` for compactness).
+Arrows carry no inline labels. Instead, a caption legend below the diagram
+decodes each color to its message name: one entry per used message type, in
+ascending palette order, wrapped in `<g id="caption">` and emitted last.
+
+Each entry is a pair:
+
+- a slim swatch `<rect x="48" y="{text_y - 7}" width="24" height="3"
+  fill="{message color}"/>` resembling the arrow line;
+- a neutral text `<text x="78" y="{text_y}" font-size="11"
+  fill="#555">{message_name}</text>` — the declared message name
+  (`SendEventRefined.message_name`), never the payload.
+
+Geometry: `caption_y0 = Y0 + (n-1)*DY + 60` (the +60 clears the self-loop
+bulge, which reaches 38 px below a lifeline); entry `i` has
+`text_y = caption_y0 + i*18`; `H = caption_y0 + (k-1)*18 + 20` with `k`
+used message types. With no sends there is no caption and
+`H = Y0 + (n-1)*DY + 40`. The canvas width never grows because of the
+caption.
 
 ## File structure
 
-Element order: `<defs>` (markers), lifelines, process labels, arrows with
-labels, dots. Tab-indented, single self-contained file, root carries
+Element order: `<defs>` (markers), lifelines, process labels, arrows,
+dots, caption (`<g id="caption">`) last. Tab-indented, single self-contained file, root carries
 `font-family="Helvetica, Arial, sans-serif"`. Markers: one gray lifeline
 marker (`markerWidth="8"`) plus one per palette color (`markerWidth="7"`),
 all with `viewBox="0 0 10 10" refX="9" refY="5" orient="auto"` and path
@@ -127,22 +141,28 @@ Dots (x = 70 + 35k):
 
 Arrows:
 
-- `m1` (request, blue): (70, 85) → (105, 175), label `request` at (96, 134);
-- `m2` (ack, green): (140, 175) → (175, 85), label `ack` at (165, 134);
-  self-loop `M 143 186 C 147 218, 206 218, 210 186`; dashed (140, 185) →
-  (140, 272) toward r, which never receives `m2`;
-- `m3` (request, blue): (245, 275) → (280, 185), label `request` at (269, 239).
+- `m1` (request, blue): (70, 85) → (105, 175);
+- `m2` (ack, green): (140, 175) → (175, 85); self-loop
+  `M 143 186 C 147 218, 206 218, 210 186`; dashed (140, 185) → (140, 272)
+  toward r, which never receives `m2`;
+- `m3` (request, blue): (245, 275) → (280, 185).
+
+Caption (`caption_y0 = 80 + 2*100 + 60 = 340`): swatch (48, 333) 24×3 blue
+with `request` at (78, 340); swatch (48, 351) 24×3 green with `ack` at
+(78, 358).
 
 ## Invariants (checklist for tests)
 
 - lifelines are horizontal, one per process, in declaration order;
 - dots: `r="3"`, `fill="#555"`, x = `X0 + k*STEP` — evenly spaced and all
   distinct;
-- one muted color per message type, shared by arrow, marker and label;
+- one muted color per message type, shared by arrow, marker and caption
+  swatch; caption text is neutral `#555` and carries the message name;
+- the caption sits below every dot and self-loop, one line per used message
+  type in ascending palette order, and is absent when there are no sends;
 - self-send → loop; unreceived recipient → dashed arrow with no dot;
 - output is valid standalone SVG: parseable XML, every `url(#...)`
   reference resolves, all coordinates inside the viewBox.
 
 A golden test can compile `example.st`, render it, and compare against
-`docs/sample_v2.svg` (masking the message-label `<text>` elements, whose
-text and x position are hand-tuned in the golden).
+`docs/sample_v2.svg` byte-exact.

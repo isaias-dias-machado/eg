@@ -5,8 +5,9 @@ process in declaration order. Events become dots spaced ``STEP`` apart
 across all lifelines, sends connect to their receives with colored
 arrows, and a recipient that never receives a send gets a vertical
 dashed arrow (a lost message) pointing at its lifeline, with no dot.
-See ``docs/svg_target.md`` for the full specification and
-``docs/sample_v2.svg`` for the golden example.
+Arrows carry no inline labels; a caption legend below the diagram decodes
+each color to its message name. See ``docs/svg_target.md`` for the full
+specification and ``docs/sample_v2.svg`` for the golden example.
 
 The only public entry point is :func:`render_svg`.
 """
@@ -38,6 +39,22 @@ SELF_LOOP_DEPTH = 38
 SELF_LOOP_STUB = 30
 LIFELINE_COLOR = "#555"
 PALETTE = ("#5b7fa6", "#6f9a76", "#b0765a")
+# Caption legend below the diagram: one entry per used message type, in
+# ascending palette order. The swatch resembles the arrow line; the text is
+# neutral gray and carries the message name.
+CAPTION_SWATCH_X = 48
+CAPTION_TEXT_X = 78
+CAPTION_SWATCH_WIDTH = 24
+CAPTION_SWATCH_HEIGHT = 3
+# Swatch y relative to the entry's text baseline: centers the 3 px bar on
+# the x-height of the 11 px caption text.
+CAPTION_SWATCH_DY = -7
+CAPTION_LINE_HEIGHT = 18
+# Gap from the last lifeline to the first caption line; clears the self-loop
+# bulge (loops reach SELF_LOOP_DEPTH = 38 px below a lifeline).
+CAPTION_TOP_GAP = 60
+CAPTION_BOTTOM_GAP = 20
+CAPTION_TEXT_COLOR = "#555"
 
 
 @dataclass(frozen=True)
@@ -63,6 +80,10 @@ class _Layout:
         - ``dots`` is ordered by temporal position; ``send_dots`` maps a
           send's ``temporal_pos`` to its dot; ``recv_dots`` maps
           ``(send temporal_pos, process)`` to that process's recv dot.
+        - ``caption_entries`` lists ``(message_type, message_name)`` per
+          used message type in ascending palette order, and ``caption_y0``
+          is the first entry's text baseline (``None`` when no send exists,
+          in which case there is no caption).
         - ``width``/``height`` follow the viewBox formula in the spec.
     """
 
@@ -74,6 +95,8 @@ class _Layout:
     x_end: int
     width: int
     height: int
+    caption_entries: list[tuple[int, str]]
+    caption_y0: int | None
 
 
 def _layout(program: RefinedAst) -> _Layout:
@@ -118,6 +141,28 @@ def _layout(program: RefinedAst) -> _Layout:
     x_last = dots[-1].x if dots else X0
     x_end = max(300, x_last + 20)
     process_count = len(program.process_declarations)
+    last_y = Y0 + (process_count - 1) * DY
+
+    # One caption entry per used message type, keeping the first message
+    # name seen for each type; ordered by palette index, then type.
+    used_types: dict[int, str] = {}
+    for event in events:
+        if isinstance(event, SendEventRefined) and event.message_type not in used_types:
+            used_types[event.message_type] = event.message_name
+    caption_entries = sorted(
+        used_types.items(), key=lambda item: (item[0] % len(PALETTE), item[0])
+    )
+    if caption_entries:
+        caption_y0 = last_y + CAPTION_TOP_GAP
+        height = (
+            caption_y0
+            + (len(caption_entries) - 1) * CAPTION_LINE_HEIGHT
+            + CAPTION_BOTTOM_GAP
+        )
+    else:
+        caption_y0 = None
+        height = last_y + 40
+
     return _Layout(
         processes=program.process_declarations,
         y_of=y_of,
@@ -126,7 +171,9 @@ def _layout(program: RefinedAst) -> _Layout:
         recv_dots=recv_dots,
         x_end=x_end,
         width=x_end + 60,
-        height=Y0 + (process_count - 1) * DY + 40,
+        height=height,
+        caption_entries=caption_entries,
+        caption_y0=caption_y0,
     )
 
 
@@ -156,20 +203,19 @@ def _dashed_line(
 
 
 def _arrow_elements(layout: _Layout, send: SendEventRefined) -> list[str]:
-    """SVG elements for one send: one arrow per recipient, plus one label.
+    """SVG elements for one send: one arrow per recipient, no inline label.
 
     Invariants:
         - recipients are drawn in ``processes_to_ids`` order, duplicates
           removed;
-        - the label follows the arrow to the first recipient that receives
-          the send, at the arrow midpoint offset by (+7, +4).
+        - arrows stay colored; the caption legend emitted by
+          :func:`render_svg` decodes the color to the message name.
     """
     palette_index = send.message_type % len(PALETTE)
     color = PALETTE[palette_index]
     marker = f"a{palette_index + 1}"
     send_dot = layout.send_dots[send.temporal_pos]
     elements: list[str] = []
-    labeled = False
 
     for recipient in dict.fromkeys(send.processes_to_ids):
         y_recipient = layout.y_of[recipient]
@@ -188,7 +234,6 @@ def _arrow_elements(layout: _Layout, send: SendEventRefined) -> list[str]:
                 f'\t<path d="{path}" fill="none" stroke="{color}" '
                 f'stroke-width="1.5" marker-end="url(#{marker})"/>'
             )
-            arrow_mid = ((send_dot.x + SELF_LOOP_START_DX + recv.x) / 2, send_dot.y + SELF_LOOP_START_DY)
         elif recv is not None:
             # Solid arrow from the send dot to the recv dot, both endpoints
             # offset ARROW_OFFSET away from their lifelines.
@@ -198,31 +243,50 @@ def _arrow_elements(layout: _Layout, send: SendEventRefined) -> list[str]:
                 f'\t<line x1="{start[0]}" y1="{start[1]}" x2="{end[0]}" y2="{end[1]}" '
                 f'stroke="{color}" stroke-width="1.5" marker-end="url(#{marker})"/>'
             )
-            arrow_mid = ((start[0] + end[0]) / 2, (start[1] + end[1]) / 2)
         elif recipient == send.process_from_id:
             # Self-send never received: short dashed stub below the send dot.
             start = (send_dot.x, send_dot.y + ARROW_OFFSET)
             end = (send_dot.x, send_dot.y + ARROW_OFFSET + SELF_LOOP_STUB)
             elements.append(_dashed_line(start, end, color, marker))
-            arrow_mid = None
         else:
             # Lost message: vertical dashed arrow to the intended recipient's
             # lifeline at the send's x, no dot.
             start = (send_dot.x, send_dot.y + ARROW_OFFSET * direction)
             end = (send_dot.x, y_recipient - LOST_OFFSET * direction)
             elements.append(_dashed_line(start, end, color, marker))
-            arrow_mid = None
-
-        if not labeled and recv is not None:
-            label_x = round(arrow_mid[0] + 7)
-            label_y = round(arrow_mid[1] + 4)
-            elements.append(
-                f'\t<text x="{label_x}" y="{label_y}" font-size="11" fill="{color}" '
-                f'font-style="italic">{escape(send.message)}</text>'
-            )
-            labeled = True
 
     return elements
+
+
+def _caption_elements(layout: _Layout) -> list[str]:
+    """The caption legend: one swatch + message-name line per used type.
+
+    Invariants:
+        - entries follow ``layout.caption_entries`` (ascending palette
+          order); the swatch ``fill`` is the message color and the text is
+          neutral ``#555`` carrying the message name;
+        - entry ``i`` has its text baseline at ``caption_y0 + i*18`` and its
+          swatch at ``text_y - 7``, so the 3 px bar sits on the text's
+          x-height;
+        - returns an empty list when the history has no sends.
+    """
+    if not layout.caption_entries:
+        return []
+    lines = ['\t<g id="caption">']
+    for index, (message_type, message_name) in enumerate(layout.caption_entries):
+        color = PALETTE[message_type % len(PALETTE)]
+        text_y = layout.caption_y0 + index * CAPTION_LINE_HEIGHT
+        lines.append(
+            f'\t\t<rect x="{CAPTION_SWATCH_X}" y="{text_y + CAPTION_SWATCH_DY}" '
+            f'width="{CAPTION_SWATCH_WIDTH}" height="{CAPTION_SWATCH_HEIGHT}" '
+            f'fill="{color}"/>'
+        )
+        lines.append(
+            f'\t\t<text x="{CAPTION_TEXT_X}" y="{text_y}" font-size="11" '
+            f'fill="{CAPTION_TEXT_COLOR}">{escape(message_name)}</text>'
+        )
+    lines.append("\t</g>")
+    return lines
 
 
 def render_svg(program: RefinedAst) -> str:
@@ -233,7 +297,7 @@ def render_svg(program: RefinedAst) -> str:
 
     Invariants of the output:
         - element order: ``<defs>`` markers, lifelines, process labels,
-          arrows with labels, dots last;
+          arrows, dots, caption last (``<g id="caption">``);
         - dot x-coordinates are ``X0 + k*STEP`` and all distinct;
         - every ``url(#...)`` reference resolves to a marker in ``<defs>``;
         - the string ends with a newline.
@@ -284,6 +348,8 @@ def render_svg(program: RefinedAst) -> str:
         lines.append(
             f'\t<circle cx="{dot.x}" cy="{dot.y}" r="{DOT_RADIUS}" fill="{LIFELINE_COLOR}"/>'
         )
+
+    lines.extend(_caption_elements(layout))
 
     lines.append("</svg>")
     return "\n".join(lines) + "\n"

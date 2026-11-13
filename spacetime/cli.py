@@ -62,7 +62,10 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     if args.to_svg:
-        print(render_svg(program))
+        # write, not print: render_svg already ends with a newline, and the
+        # golden file docs/sample_v2.svg must diff byte-exact against this
+        # output.
+        sys.stdout.write(render_svg(program))
     elif not args.print_stages:
         print(format_refined_ast(program))
     return 0

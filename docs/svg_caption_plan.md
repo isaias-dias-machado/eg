@@ -15,7 +15,8 @@ line.
   canvas width never grows because of the caption: `W = X_END + 60` as
   before (no horizontal row, no overflow handling).
 - **Swatch.** Each entry starts with a slim `<rect>` — 24 × 3 px,
-  `fill` = the message color — at `x = 48`, resembling the arrow line.
+  `fill` = the message color — at `x = 48`, `y = text_y - 7` (centers the
+  3 px bar on the x-height of the 11 px text), resembling the arrow line.
 - **Neutral text.** The caption text sits at `x = 78`, `font-size="11"`,
   `fill="#555"` (neutral, not the message color). Text = the message
   **name** (`request`, `ack`), which requires adding `message_name` back
@@ -51,9 +52,9 @@ and y=358 (`ack`, green swatch).
    loop; all coordinates inside the viewBox; no italic inline labels
    remain. Update the tests that currently assert inline labels; golden
    test drops the masking.
-6. Git: new worktree `agent/svg-caption` based on `agent/svg-backend`;
-   implement and commit there; never commit to `master`; leave the tree
-   clean.
+6. Git: implemented in the existing `agent/svg-backend` worktree (operator
+   decision, overriding the original `agent/svg-caption` worktree idea);
+   never commit to `master`; leave the tree clean.
 
 ## Validation
 
