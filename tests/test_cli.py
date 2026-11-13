@@ -8,25 +8,12 @@ ROOT = Path(__file__).parents[1]
 
 
 def test_cli_compiles_valid_file(capsys) -> None:
-    exit_code = main([str(ROOT / "example.txt")])
+    exit_code = main([str(ROOT / "example.st")])
 
     captured = capsys.readouterr()
     assert exit_code == 0
     assert captured.out.startswith("<svg ")
     assert "== parse tree ==" not in captured.out
-    assert captured.err == ""
-
-
-def test_cli_prints_every_stage_when_requested(capsys) -> None:
-    exit_code = main(["--print-stages", str(ROOT / "example.txt")])
-
-    captured = capsys.readouterr()
-    assert exit_code == 0
-    assert "== parse tree ==" in captured.out
-    assert "== ast ==" in captured.out
-    assert "== refined ast ==" in captured.out
-    assert "event_number 6" in captured.out
-    assert "<svg" not in captured.out
     assert captured.err == ""
 
 

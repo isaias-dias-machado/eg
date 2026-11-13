@@ -62,7 +62,7 @@ History {
 
 
 def test_example_txt_compiles() -> None:
-    program = compile_file(ROOT / "example.txt")
+    program = compile_file(ROOT / "example.st")
 
     assert program.process_declarations == ["p", "q", "r"]
     assert len(program.history.events) == 6
