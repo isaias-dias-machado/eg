@@ -20,7 +20,6 @@ INVALID_CASES = {
     "undeclared_process_in_maybe.st": "undeclared process: 'z'",
     "undefined_event_in_maybe.st": "undeclared send event: 'm9'",
     "later_event_in_maybe.st": "undeclared send event: 'm1'",
-    "recv_not_recipient_in_maybe.st": "process 'r' is not a recipient of send event 'm1'",
     "repeated_history.st": "duplicate History block",
 }
 
@@ -98,6 +97,21 @@ def test_receive_inside_maybe_resolves_to_send_inside_maybe() -> None:
     assert isinstance(recv, RecvEventRefined)
     assert recv.related_send_event is send
     assert recv.temporal_pos > send.temporal_pos
+
+
+def test_recv_at_non_recipient_is_valid() -> None:
+    # v2 drops v1's recipient-membership check: a Recv at a non-recipient
+    # just means the message was not received there.
+    program = compile_source(
+        (FIXTURES / "valid" / "recv_not_recipient_in_maybe.st").read_text()
+    )
+
+    maybe = program.history.items[1]
+    assert isinstance(maybe, MaybeBlockRefined)
+    recv = maybe.items[0]
+    assert isinstance(recv, RecvEventRefined)
+    assert recv.process_ids == ["r"]
+    assert recv.related_send_event.processes_to_ids == ["q"]
 
 
 def test_empty_maybe_is_valid() -> None:

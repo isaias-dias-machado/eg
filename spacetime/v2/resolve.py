@@ -4,7 +4,9 @@ Same checks as v1 :mod:`spacetime.semantics`, walked over the item *tree*:
 every identifier is checked against its declaration, duplicate send-event
 names are rejected, each receive is resolved to the send event it refers to,
 and events are numbered by their position in the flattened source-order
-event sequence.
+event sequence. One v1 check is dropped: recipient membership. A ``Recv``
+may name any declared process; at a non-recipient it just means the message
+was not received there.
 
 Known limitation (to be tightened by the CFG walk over the refined tree):
 causality is checked linearly over the flattened order, so a ``Recv``
@@ -113,14 +115,9 @@ def _resolve_items(
                     _validate_process(process, process_names)
 
                 related_send = resolved_sends[send_name]
-                for process in item.process_ids:
-                    if process.name not in related_send.processes_to_ids:
-                        raise SemanticError(
-                            f"process '{process.name}' is not a recipient of "
-                            f"send event '{send_name}'",
-                            location=process.location,
-                        )
-
+                # v2 drops v1's recipient-membership check: a Recv may name
+                # any declared process, and at a non-recipient it just means
+                # the message was not received there.
                 out.append(
                     RecvEventRefined(
                         temporal_pos=pos,
@@ -163,17 +160,17 @@ def create_refined_ast(ast: Ast) -> RefinedAst:
         - ``temporal_pos`` numbers events by the flattened source order,
           starting at 0;
         - every process and message reference denotes a declaration;
-        - every receive refers to an earlier send event and lists only that
-          event's recipients;
+        - every receive refers to an earlier send event and lists declared
+          processes (recipients or not — see below);
         - send-event names and message declarations are inlined and dropped.
 
     Failure modes:
         Raises :class:`SemanticError` for duplicate event names, undeclared
-        messages or processes, undeclared send events (a receive may only
-        refer to a send that precedes it in the flattened order), and
-        receives from non-recipients. Raises ``TypeError`` if the history
-        holds a node that is neither an event nor a ``MaybeBlock`` (a
-        builder/grammar drift, i.e. an internal invariant violation).
+        messages or processes, and undeclared send events (a receive may
+        only refer to a send that precedes it in the flattened order).
+        Raises ``TypeError`` if the history holds a node that is neither an
+        event nor a ``MaybeBlock`` (a builder/grammar drift, i.e. an internal
+        invariant violation).
     """
     process_names = {process.name for process in ast.process_declarations}
     message_by_name = {

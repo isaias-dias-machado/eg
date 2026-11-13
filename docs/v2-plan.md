@@ -78,8 +78,11 @@ maybe_block   : _MAYBE "{" history_item* "}"
   later CFG walk a total order over events.
 - `resolve.py` is v1 `semantics.py` adapted to the tree. Same checks:
   duplicate blocks / declarations / event names, undeclared message, process
-  or send event, recipient membership, and linear causality (`seen_sends`
-  threaded through the flattened order, as in v1).
+  or send event, and linear causality (`seen_sends` threaded through the
+  flattened order, as in v1). One v1 check is **dropped**: recipient
+  membership. A `Recv` may name any declared process; at a non-recipient it
+  just means the message was not received there (see
+  `tests/fixtures/v2/valid/recv_not_recipient_in_maybe.st`).
 - **Known limitation, to be fixed by the CFG walk in the next phase:** linear
   causality accepts a `Recv(m)` outside a `Maybe` whose `Send(m)` is inside
   it. The CFG check will tighten this to dominance: a receive is legal only

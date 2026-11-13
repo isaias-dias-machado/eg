@@ -117,8 +117,10 @@ class RecvEvent:
     Invariants:
         - ``send_event_ref`` names a send event that appears *earlier* in
           the flattened history; forward references are rejected.
-        - ``process_ids`` is non-empty and every entry must be a recipient
-          of the referenced send event.
+        - ``process_ids`` is non-empty and every entry names a declared
+          process. Entries need not be recipients of the referenced send:
+          v2 drops v1's recipient-membership check, and a receive at a
+          non-recipient just means the message was not received there.
 
     Failure modes:
         Declaration order and recipient membership are validated in
@@ -227,8 +229,9 @@ class RecvEventRefined:
         - ``related_send_event`` is the same ``SendEventRefined`` instance
           stored earlier in the refined history.
         - ``temporal_pos`` is greater than the related send's position.
-        - ``process_ids`` is a non-empty subset of
-          ``related_send_event.processes_to_ids``.
+        - ``process_ids`` is a non-empty list of declared processes; it may
+          name non-recipients of the related send (the message was then not
+          received there).
 
     Failure modes:
         None; the instance only exists after semantic validation succeeded.

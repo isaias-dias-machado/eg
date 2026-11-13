@@ -146,8 +146,8 @@ send_event       : event_identifier _DEFINED _SEND "(" message_identifier ")" _I
 //  CC assert event_identifier.name in recv_event.sends, f"undeclared send event: '{event_identifier.name}'"
 //  CC for p in process_list.names:
 //         assert p in recv_event.procs, f"undeclared process: '{p}'"
-//         assert p in recv_event.seen_sends[event_identifier.name], (
-//             f"process '{p}' is not a recipient of send event '{event_identifier.name}'")
+//  v2 drops v1's recipient-membership CC: a Recv at a non-recipient is valid
+//  and just means the message was not received there.
 //  Recv(m1) :: q   (kept as one event even for several processes)
 recv_event       : _RECV "(" event_identifier ")" _IN process_list
 
