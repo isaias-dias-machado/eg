@@ -14,6 +14,35 @@ _STAGE_TITLES = {
     "refined": "refined ast",
 }
 
+_EPILOG = """\
+the language: three blocks, in any order
+
+  Processes { p  q }            declare process names, one per line
+  Messages  { m := "payload" }  declare a message name and its payload text
+  History   { ... }             the events, in the order they happen
+
+History events:
+
+  m1 := Send(msg) :: p -> q, r  process p sends message `msg` to q and r
+  Recv(m1) :: q                 process q receives the message sent as m1
+
+super simple example (save as hello.st, then run `spacetime hello.st`):
+
+  Processes {
+    p
+    q
+  }
+
+  Messages {
+    hello := "Hello"
+  }
+
+  History {
+    m1 := Send(hello) :: p -> q
+    Recv(m1) :: q
+  }
+"""
+
 
 def _print_stage(stage: str, output: object) -> None:
     """Print one compiler stage with a header identifying the stage."""
@@ -38,7 +67,12 @@ def main(argv: list[str] | None = None) -> int:
     cannot be read or the program contains a DSL error. Diagnostics go to
     stderr; rendered output goes to stdout.
     """
-    parser = argparse.ArgumentParser(prog="space-time-dsl")
+    parser = argparse.ArgumentParser(
+        prog="space-time-dsl",
+        description="Compile a space-time diagram DSL file and print its SVG diagram.",
+        epilog=_EPILOG,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument("path", help="DSL source file")
     parser.add_argument(
         "--print-stages",
