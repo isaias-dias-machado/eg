@@ -1,17 +1,19 @@
 # CI + PyPI publish for the space-time DSL compiler.
 #
-# One-time setup in the browser (github.com):
-#   1. Merge this branch into svg_backend (Code -> Pull requests).
-#   2. Repo Settings -> Secrets and variables -> Actions -> New repository secret:
-#        Name:  PYPI_API_TOKEN
-#        Value: your PyPI token (starts with "pypi-", create it at
-#               https://pypi.org/manage/account/token/)
+# One-time setup in the browser:
+#   1. On pypi.org: Account settings -> Publishing -> add a pending trusted
+#      publisher for this repo:
+#        owner: isaias-dias-machado, repository: eg,
+#        workflow name: workflow.yml, environment: (leave empty)
+#      PyPI marks it "pending" until this workflow uploads once.
+#   2. Merge this branch into svg_backend (Code -> Pull requests).
 #   3. Actions tab -> "workflow" -> Run workflow -> Run workflow,
 #      to build and publish to PyPI manually.
 #
 # Every push to svg_backend runs the tests and builds the package.
 # Publishing to PyPI happens only on a manual Run workflow click,
-# and only if the tests passed first.
+# and only if the tests passed first. No API token is needed: the publish
+# job uses OIDC trusted publishing (id-token: write).
 
 name: workflow
 
@@ -54,14 +56,15 @@ jobs:
     needs: build
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # OIDC token that PyPI verifies against the trusted publisher
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - run: pip install build twine
+      - run: pip install build
       - run: python -m build
-      - env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: twine upload dist/*
+      # uploads dist/ using the OIDC token; no PYPI_API_TOKEN secret needed
+      - uses: pypa/gh-action-pypi-publish@release/v1
