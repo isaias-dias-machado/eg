@@ -1,0 +1,67 @@
+# CI + PyPI publish for the space-time DSL compiler.
+#
+# One-time setup in the browser (github.com):
+#   1. Merge this branch into svg_backend (Code -> Pull requests).
+#   2. Repo Settings -> Secrets and variables -> Actions -> New repository secret:
+#        Name:  PYPI_API_TOKEN
+#        Value: your PyPI token (starts with "pypi-", create it at
+#               https://pypi.org/manage/account/token/)
+#   3. Actions tab -> "workflow" -> Run workflow -> Run workflow,
+#      to build and publish to PyPI manually.
+#
+# Every push to svg_backend runs the tests and builds the package.
+# Publishing to PyPI happens only on a manual Run workflow click,
+# and only if the tests passed first.
+
+name: workflow
+
+on:
+  push:
+    branches: [svg_backend]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install --editable . pytest
+      - run: pytest -q
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install build twine
+      - run: python -m build
+      - run: twine check dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install build twine
+      - run: python -m build
+      - env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: twine upload dist/*
