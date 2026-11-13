@@ -16,28 +16,38 @@ GRAMMAR_PATH = Path(__file__).with_name("grammar.lark")
 
 
 @cache
-def _get_parser() -> Lark:
-    """Return the shared Earley parser, constructing it on first use.
+def _get_parser(grammar_path: Path = GRAMMAR_PATH) -> Lark:
+    """Return the shared Earley parser for ``grammar_path``, building it on first use.
+
+    One parser is cached per grammar file, so the v1 grammar and the v2
+    grammar (``spacetime/v2/grammar.lark``) coexist in the same process.
 
     Invariants:
-        The grammar file is read relative to this module and does not
-        change at runtime. ``propagate_positions`` is required so the
-        builder can attach source locations to identifiers.
+        The grammar file does not change at runtime.
+        ``propagate_positions`` is required so the builder can attach
+        source locations to identifiers.
 
     Failure modes:
         Propagates ``OSError`` if the grammar file is missing or unreadable.
     """
     return Lark(
-        GRAMMAR_PATH.read_text(),
+        Path(grammar_path).read_text(),
         parser="earley",
         propagate_positions=True,
     )
 
 
-def parse(source: str, *, source_name: str = "<string>") -> Tree:
+def parse(
+    source: str,
+    *,
+    source_name: str = "<string>",
+    grammar_path: Path = GRAMMAR_PATH,
+) -> Tree:
     """Parse DSL ``source`` into a Lark tree.
 
     ``source_name`` is used only as the file label in error messages.
+    ``grammar_path`` selects the language version; it defaults to the v1
+    grammar next to this module.
 
     Failure modes:
         Raises :class:`spacetime.errors.ParseError` with a source excerpt
@@ -45,6 +55,6 @@ def parse(source: str, *, source_name: str = "<string>") -> Tree:
         propagate unchanged.
     """
     try:
-        return _get_parser().parse(source)
+        return _get_parser(grammar_path).parse(source)
     except UnexpectedInput as exc:
         raise ParseError.from_lark(exc, source, source_name) from exc

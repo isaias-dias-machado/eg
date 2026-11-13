@@ -6,6 +6,7 @@ import sys
 from .compiler import compile_file
 from .errors import DslError
 from .render import format_ast, format_parse_tree, format_refined_ast
+from .v2 import compile_file as compile_file_v2
 
 _STAGE_TITLES = {
     "parse": "parse tree",
@@ -39,14 +40,21 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="space-time-dsl")
     parser.add_argument("path", help="DSL source file")
     parser.add_argument(
+        "--v2",
+        action="store_true",
+        help="compile with the v2 language (adds Maybe blocks to History)",
+    )
+    parser.add_argument(
         "--print-stages",
         action="store_true",
         help="print the parse tree and intermediate ASTs after every compiler stage",
     )
     args = parser.parse_args(argv)
 
+    compile = compile_file_v2 if args.v2 else compile_file
+
     try:
-        program = compile_file(
+        program = compile(
             args.path,
             observe=_print_stage if args.print_stages else None,
         )

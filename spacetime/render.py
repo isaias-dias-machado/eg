@@ -42,13 +42,14 @@ def _format_dataclass(obj, label: str | None, depth: int) -> list[str]:
     if cls == "Ident":
         return [f"{indent}{actual_label}\t{obj.name}"]
 
-    # History/HistoryRefined: single-field wrappers, collapse to events
+    # History/HistoryRefined: single-field wrappers, collapse to their items
+    # (v1 calls the field "events", v2 calls it "items")
     field_list = fields(obj)
-    if len(field_list) == 1 and field_list[0].name == "events":
+    if len(field_list) == 1 and field_list[0].name in ("events", "items"):
         lines = [f"{indent}{actual_label}"]
-        events = getattr(obj, "events")
-        for event in events:
-            lines.extend(_format_dataclass(event, None, depth + 1))
+        items = getattr(obj, field_list[0].name)
+        for item in items:
+            lines.extend(_format_dataclass(item, None, depth + 1))
         return lines
 
     # General dataclass: print label, then each field
