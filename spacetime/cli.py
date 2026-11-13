@@ -27,12 +27,12 @@ def _print_stage(stage: str, output: object) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Compile the file named on the command line and print its refined AST.
+    """Compile the file named on the command line and print its SVG diagram.
 
-    With ``--print-stages``, the parse tree and both intermediate ASTs are
-    printed as the pipeline produces them, and the final refined AST is not
-    printed a second time. With ``--to-svg``, the SVG space-time diagram of
-    the program is printed instead of the refined AST.
+    By default the SVG space-time diagram of the program is printed to
+    stdout. With ``--print-stages``, only the frontend runs: the parse tree
+    and both intermediate ASTs are printed as the pipeline produces them,
+    and no SVG is rendered.
 
     Returns a process exit code: ``0`` on success, ``1`` when the file
     cannot be read or the program contains a DSL error. Diagnostics go to
@@ -43,12 +43,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--print-stages",
         action="store_true",
-        help="print the parse tree and intermediate ASTs after every compiler stage",
+        help="run only the frontend: print the parse tree and intermediate ASTs after every compiler stage",
     )
     parser.add_argument(
         "--to-svg",
         action="store_true",
-        help="print the SVG space-time diagram instead of the refined AST",
+        help="print the SVG space-time diagram (this is the default)",
     )
     args = parser.parse_args(argv)
 
@@ -61,11 +61,9 @@ def main(argv: list[str] | None = None) -> int:
         print(exc, file=sys.stderr)
         return 1
 
-    if args.to_svg:
+    if not args.print_stages:
         # write, not print: render_svg already ends with a newline, and the
         # golden file docs/sample_v2.svg must diff byte-exact against this
         # output.
         sys.stdout.write(render_svg(program))
-    elif not args.print_stages:
-        print(format_refined_ast(program))
     return 0

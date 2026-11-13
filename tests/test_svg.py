@@ -411,10 +411,11 @@ def test_cli_to_svg_prints_svg(capsys) -> None:
     assert captured.err == ""
 
 
-def test_cli_default_output_unchanged(capsys) -> None:
+def test_cli_default_prints_svg(capsys) -> None:
     exit_code = main([str(ROOT / "example.st")])
 
     captured = capsys.readouterr()
     assert exit_code == 0
-    assert captured.out.startswith("refined_ast")
-    assert "<svg" not in captured.out
+    assert captured.out.startswith("<svg ")
+    assert captured.out.rstrip().endswith("</svg>")
+    assert captured.err == ""

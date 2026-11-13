@@ -12,7 +12,7 @@ def test_cli_compiles_valid_file(capsys) -> None:
 
     captured = capsys.readouterr()
     assert exit_code == 0
-    assert "event_number 6" in captured.out
+    assert captured.out.startswith("<svg ")
     assert "== parse tree ==" not in captured.out
     assert captured.err == ""
 
@@ -26,6 +26,7 @@ def test_cli_prints_every_stage_when_requested(capsys) -> None:
     assert "== ast ==" in captured.out
     assert "== refined ast ==" in captured.out
     assert "event_number 6" in captured.out
+    assert "<svg" not in captured.out
     assert captured.err == ""
 
 

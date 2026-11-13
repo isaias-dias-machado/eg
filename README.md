@@ -14,15 +14,16 @@ shadow the real environment.
 
 ## Running
 
-Compile a DSL file and print the refined AST:
+Compile a DSL file and print its SVG space-time diagram to stdout:
 
 ```bash
 source .venv/bin/activate
 spacetime example.txt        # equivalently: python -m spacetime example.txt
 ```
 
-To inspect every compiler stage, add `--print-stages`. It prints the Lark
-parse tree, the intermediate `Ast`, and the refined AST, each under a header:
+To inspect every compiler stage instead, add `--print-stages`. Only the
+frontend runs: it prints the Lark parse tree, the intermediate `Ast`, and
+the refined AST, each under a header, and no SVG is rendered:
 
 ```bash
 spacetime --print-stages example.txt
