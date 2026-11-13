@@ -22,6 +22,7 @@ from .compiler import StageObserver, compile_file, compile_source
 from .errors import DslError, ParseError, SemanticError
 from .parser import parse
 from .semantics import create_refined_ast
+from .svg import render_svg
 
 __all__ = [
     "Ast",
@@ -45,4 +46,5 @@ __all__ = [
     "compile_source",
     "create_refined_ast",
     "parse",
+    "render_svg",
 ]

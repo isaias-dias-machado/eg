@@ -15,6 +15,11 @@ to right. Golden example: `docs/sample_v2.svg` from `example.txt`.
   5 px short of a lifeline, but `sample_v2.svg` ends the dashed arrow at
   y=272 (8 px short of r's lifeline at 280). We match the golden (8 px for
   the dashed end) and annotate the spec table.
+- **Solid-arrow endpoints use facing offsets** (start = `ys + 5·sign(yr−ys)`,
+  end = `yr − 5·sign(yr−ys)`), the only rule consistent with the golden's
+  m1/m2 arrows. The golden's m3 start (245, 285) contradicted its own m2
+  arrow, so `sample_v2.svg` and the spec worked example were corrected to
+  (245, 275) → (280, 185).
 - **Label text is the payload** (`SendEventRefined.message`), per spec.
   The golden abbreviates payloads to message names, so the golden test
   masks `<text>` label elements (text and x position — the golden's label

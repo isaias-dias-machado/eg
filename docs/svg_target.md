@@ -3,7 +3,7 @@
 Specification for the diagram the compiler emits: a Lamport space-time
 diagram with **horizontal lifelines** (time flows left to right), as one
 self-contained SVG file per program. The golden example is
-[`sample_v2.svg`](sample_v2.svg), which corresponds to [`../example.txt`](../example.txt).
+[`sample_v2.svg`](sample_v2.svg), which corresponds to [`../example.st`](../example.st).
 
 ## Input
 
@@ -29,7 +29,7 @@ The renderer consumes a `RefinedAst` (output of
 | `Y0` | 80 | y of the first (topmost) lifeline |
 | `DY` | 100 | vertical gap between lifelines |
 | dot radius | 3 | |
-| arrow offset | 5 | arrows start/end 5 px short of a lifeline |
+| arrow offset | 5 | solid arrows start/end 5 px short of a lifeline; dashed lost arrows end 8 px short (see `sample_v2.svg`: 272 = 280 − 8) |
 | viewBox | `0 0 W H` with `W = X_END + 60`, `H = Y0 + (n-1)*DY + 40` | `n` = number of processes |
 
 For 3 processes and 7 dots this gives `0 0 360 320`, exactly as in
@@ -111,7 +111,7 @@ marker (`markerWidth="8"`) plus one per palette color (`markerWidth="7"`),
 all with `viewBox="0 0 10 10" refX="9" refY="5" orient="auto"` and path
 `M0 0 L10 5 L0 10 z`.
 
-## Worked example: `example.txt` → `sample_v2.svg`
+## Worked example: `example.st` → `sample_v2.svg`
 
 Dots (x = 70 + 35k):
 
@@ -131,7 +131,7 @@ Arrows:
 - `m2` (ack, green): (140, 175) → (175, 85), label `ack` at (165, 134);
   self-loop `M 143 186 C 147 218, 206 218, 210 186`; dashed (140, 185) →
   (140, 272) toward r, which never receives `m2`;
-- `m3` (request, blue): (245, 285) → (280, 185), label `request` at (269, 239).
+- `m3` (request, blue): (245, 275) → (280, 185), label `request` at (269, 239).
 
 ## Invariants (checklist for tests)
 
@@ -143,5 +143,6 @@ Arrows:
 - output is valid standalone SVG: parseable XML, every `url(#...)`
   reference resolves, all coordinates inside the viewBox.
 
-A golden test can compile `example.txt`, render it, and compare against
-`docs/sample_v2.svg`.
+A golden test can compile `example.st`, render it, and compare against
+`docs/sample_v2.svg` (masking the message-label `<text>` elements, whose
+text and x position are hand-tuned in the golden).

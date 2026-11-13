@@ -75,8 +75,12 @@ def create_refined_ast(ast: Ast) -> RefinedAst:
     # send in history order).
     resolved_sends: dict[str, SendEventRefined] = {}
     refined_events: list[SendEventRefined | RecvEventRefined] = []
-    messages_seen: dict[str, int] = {}
-    messages_seen_count: int = 0
+    # 0-based declaration index of each message in the Messages block; this
+    # becomes SendEventRefined.message_type and indexes the SVG palette.
+    message_index = {
+        declaration.name.name: index
+        for index, declaration in enumerate(ast.message_declarations)
+    }
 
     for temporal_pos, event in enumerate(ast.history.events):
         match event:
@@ -94,9 +98,6 @@ def create_refined_ast(ast: Ast) -> RefinedAst:
                         f"undeclared message: '{message_name}'",
                         location=event.message_id.location,
                     )
-                messages_seen[message_name] = messages_seen_count
-                messages_seen_count += 1
-
                 _validate_process(event.process_from_id, process_names)
                 for recipient in event.processes_to_ids:
                     _validate_process(recipient, process_names)
@@ -106,7 +107,7 @@ def create_refined_ast(ast: Ast) -> RefinedAst:
                 refined_event = SendEventRefined(
                     temporal_pos=temporal_pos,
                     message=message_by_name[message_name],
-                    message_type=1,
+                    message_type=message_index[message_name],
                     process_from_id=event.process_from_id.name,
                     processes_to_ids=[
                         recipient.name for recipient in event.processes_to_ids

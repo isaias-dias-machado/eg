@@ -6,6 +6,7 @@ import sys
 from .compiler import compile_file
 from .errors import DslError
 from .render import format_ast, format_parse_tree, format_refined_ast
+from .svg import render_svg
 
 _STAGE_TITLES = {
     "parse": "parse tree",
@@ -30,11 +31,12 @@ def main(argv: list[str] | None = None) -> int:
 
     With ``--print-stages``, the parse tree and both intermediate ASTs are
     printed as the pipeline produces them, and the final refined AST is not
-    printed a second time.
+    printed a second time. With ``--to-svg``, the SVG space-time diagram of
+    the program is printed instead of the refined AST.
 
     Returns a process exit code: ``0`` on success, ``1`` when the file
     cannot be read or the program contains a DSL error. Diagnostics go to
-    stderr; rendered trees go to stdout.
+    stderr; rendered output goes to stdout.
     """
     parser = argparse.ArgumentParser(prog="space-time-dsl")
     parser.add_argument("path", help="DSL source file")
@@ -42,6 +44,11 @@ def main(argv: list[str] | None = None) -> int:
         "--print-stages",
         action="store_true",
         help="print the parse tree and intermediate ASTs after every compiler stage",
+    )
+    parser.add_argument(
+        "--to-svg",
+        action="store_true",
+        help="print the SVG space-time diagram instead of the refined AST",
     )
     args = parser.parse_args(argv)
 
@@ -54,6 +61,8 @@ def main(argv: list[str] | None = None) -> int:
         print(exc, file=sys.stderr)
         return 1
 
-    if not args.print_stages:
+    if args.to_svg:
+        print(render_svg(program))
+    elif not args.print_stages:
         print(format_refined_ast(program))
     return 0

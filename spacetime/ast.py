@@ -174,6 +174,8 @@ class SendEventRefined:
     Invariants:
         - ``temporal_pos`` is the 0-based index of the event in
           ``HistoryRefined.events``.
+        - ``message_type`` is the 0-based declaration index of the message
+          in the ``Messages`` block.
         - ``process_from_id`` and every entry in ``processes_to_ids`` name
           declared processes.
         - ``processes_to_ids`` is non-empty and may repeat a process if the
