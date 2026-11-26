@@ -3,7 +3,6 @@ from pathlib import Path
 import pytest
 
 from spacetime import ParseError
-from spacetime import parse as parse_v1
 from spacetime.v2 import parse
 
 FIXTURES = Path(__file__).parent / "fixtures" / "v2"
@@ -34,8 +33,3 @@ def test_v2_syntax_error_has_location_and_context() -> None:
     assert error.source_name == "broken.st"
     assert "syntax error" in str(error)
     assert "^" in str(error)
-
-
-def test_v1_grammar_rejects_maybe() -> None:
-    with pytest.raises(ParseError):
-        parse_v1("History {\n  Maybe {\n  }\n}\n")

@@ -1,10 +1,9 @@
-"""v2 of the Space-Time DSL: adds ``Maybe`` blocks to ``History``.
+"""The Space-Time DSL v2: adds ``Maybe`` blocks to ``History``.
 
-The v2 front end compiles a program up to the refined AST with a
-tree-shaped history (see :mod:`spacetime.v2.ast`). The v1 package
-(:mod:`spacetime`) is unchanged; the CLI selects v2 with ``--v2``.
-
-Typical use is :func:`compile_source` or :func:`compile_file`.
+The front end compiles a program up to the refined AST with a
+tree-shaped history (see :mod:`spacetime.v2.ast`). The public surface is
+re-exported by :mod:`spacetime`; typical use is :func:`compile_source`
+or :func:`compile_file`.
 """
 
 from ..errors import DslError, ParseError, SemanticError
@@ -26,7 +25,7 @@ from .ast import (
     SourceLocation,
 )
 from .builder import AstBuilder, build_ast
-from .compiler import compile_file, compile_source, parse
+from .compiler import StageObserver, compile_file, compile_source, parse
 from .resolve import create_refined_ast
 
 __all__ = [
@@ -49,6 +48,7 @@ __all__ = [
     "SendEvent",
     "SendEventRefined",
     "SourceLocation",
+    "StageObserver",
     "build_ast",
     "compile_file",
     "compile_source",

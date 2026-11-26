@@ -8,7 +8,7 @@ familiar ``file:line:column: error: message`` form.
 
 from lark.exceptions import UnexpectedInput
 
-from .ast import SourceLocation
+from .v2.ast import SourceLocation
 
 
 class DslError(Exception):
@@ -18,8 +18,8 @@ class DslError(Exception):
         message: Human-readable description without a location prefix.
         location: Optional 1-based source position.
         source_name: Optional file name or label. Mutable because
-            :func:`spacetime.compiler.compile_source` attaches it after the
-            error has been raised.
+            :func:`spacetime.v2.compiler.compile_source` attaches it after
+            the error has been raised.
 
     Failure modes:
         None; construction never validates the fields.

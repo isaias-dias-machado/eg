@@ -39,7 +39,7 @@ packages = ["spacetime", "spacetime.v2"]
 [tool.setuptools.package-data]
 # grammar.lark is read at runtime via Path(__file__).with_name("grammar.lark"),
 # so it must ship inside the package or an installed copy cannot parse anything.
-spacetime = ["grammar.lark", "v2/grammar.lark"]
+spacetime = ["v2/grammar.lark"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

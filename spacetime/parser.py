@@ -1,7 +1,8 @@
 """Lark front end: DSL text to parse tree (stage 1 of the pipeline).
 
-The grammar lives next to this module, so parsing does not depend on the
-process working directory. The parser is built once per process and shared.
+The grammar file is chosen by the caller, so parsing does not depend on
+the process working directory. The parser is built once per process and
+shared per grammar file.
 """
 
 from functools import cache
@@ -12,15 +13,13 @@ from lark.exceptions import UnexpectedInput
 
 from .errors import ParseError
 
-GRAMMAR_PATH = Path(__file__).with_name("grammar.lark")
-
 
 @cache
-def _get_parser(grammar_path: Path = GRAMMAR_PATH) -> Lark:
+def _get_parser(grammar_path: Path) -> Lark:
     """Return the shared Earley parser for ``grammar_path``, building it on first use.
 
-    One parser is cached per grammar file, so the v1 grammar and the v2
-    grammar (``spacetime/v2/grammar.lark``) coexist in the same process.
+    One parser is cached per grammar file; the grammar is the v2 grammar
+    (``spacetime/v2/grammar.lark``).
 
     Invariants:
         The grammar file does not change at runtime.
@@ -40,14 +39,13 @@ def _get_parser(grammar_path: Path = GRAMMAR_PATH) -> Lark:
 def parse(
     source: str,
     *,
-    source_name: str = "<string>",
-    grammar_path: Path = GRAMMAR_PATH,
+    source_name: str,
+    grammar_path: Path,
 ) -> Tree:
     """Parse DSL ``source`` into a Lark tree.
 
     ``source_name`` is used only as the file label in error messages.
-    ``grammar_path`` selects the language version; it defaults to the v1
-    grammar next to this module.
+    ``grammar_path`` selects the grammar file to parse with.
 
     Failure modes:
         Raises :class:`spacetime.errors.ParseError` with a source excerpt

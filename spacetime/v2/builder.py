@@ -1,9 +1,9 @@
-"""Lark parse tree to ``Ast`` translation (stage 2 of the v2 pipeline).
+"""Lark parse tree to ``Ast`` translation (stage 2 of the pipeline).
 
-Same pattern as :mod:`spacetime.builder`: :class:`AstBuilder` is a Lark
-``Interpreter`` whose method names match the rules in ``grammar.lark``. On
-top of the v1 rules it handles ``history_item`` and ``maybe_block``, so the
-resulting :class:`~spacetime.v2.ast.History` is a tree of items.
+:class:`AstBuilder` is a Lark ``Interpreter`` whose method names match the
+rules in ``grammar.lark``. On top of the core rules it handles
+``history_item`` and ``maybe_block``, so the resulting
+:class:`~spacetime.v2.ast.History` is a tree of items.
 
 Failure modes:
     Structural violations raise :class:`spacetime.errors.SemanticError` with
@@ -16,8 +16,6 @@ from dataclasses import dataclass
 
 from lark import Token, Tree
 from lark.visitors import Interpreter
-
-import networkx as nx
 
 from ..errors import SemanticError
 from .ast import (

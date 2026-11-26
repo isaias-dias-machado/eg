@@ -14,7 +14,7 @@ The ast/refined-ast stages are rendered in a Lark-pretty style:
 import re
 from dataclasses import fields, is_dataclass
 
-from .ast import Ast, History, HistoryRefined, Ident, RefinedAst
+from .v2.ast import Ast, History, HistoryRefined, Ident, RefinedAst
 
 
 def _snake_case(name: str) -> str:
@@ -43,9 +43,8 @@ def _format_dataclass(obj, label: str | None, depth: int) -> list[str]:
         return [f"{indent}{actual_label}\t{obj.name}"]
 
     # History/HistoryRefined: single-field wrappers, collapse to their items
-    # (v1 calls the field "events", v2 calls it "items")
     field_list = fields(obj)
-    if len(field_list) == 1 and field_list[0].name in ("events", "items"):
+    if len(field_list) == 1 and field_list[0].name == "items":
         lines = [f"{indent}{actual_label}"]
         items = getattr(obj, field_list[0].name)
         for item in items:

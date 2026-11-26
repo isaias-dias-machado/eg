@@ -1,8 +1,8 @@
 """Syntax tree data structures for the v2 Space-Time DSL.
 
-Same two tree shapes as v1 (see :mod:`spacetime.ast`), with one change: the
-history is a *tree* of items instead of a flat event list, because v2 adds
-the ``Maybe`` block, which groups several history items into one optional
+Two tree shapes (``Ast`` and ``RefinedAst``), with one twist: the
+history is a *tree* of items instead of a flat event list, because the
+``Maybe`` block groups several history items into one optional
 branch.
 
 ``Ast``
