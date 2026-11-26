@@ -14,7 +14,6 @@ from ..errors import DslError
 from ..parser import parse as _parse
 from .ast import RefinedAst
 from .builder import build_ast
-from .resolve import create_refined_ast
 
 GRAMMAR_PATH = Path(__file__).with_name("grammar.lark")
 
@@ -50,7 +49,7 @@ def compile_source(
     *,
     source_name: str = "<string>",
     observe: StageObserver | None = None,
-) -> RefinedAst:
+):
     """Compile v2 DSL text into a refined AST.
 
     ``source_name`` labels diagnostics. It is attached to any ``DslError``
@@ -74,9 +73,7 @@ def compile_source(
         ast = build_ast(tree)
         _notify(observe, "ast", ast)
 
-        refined = create_refined_ast(ast)
-        _notify(observe, "refined", refined)
-        return refined
+        return ast
     except DslError as exc:
         if exc.source_name is None:
             exc.source_name = source_name
