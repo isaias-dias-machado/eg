@@ -81,14 +81,20 @@ messages_block   : _MESSAGES "{" message_decl* "}"
 //  ER message_decl.entry = {message_name.name: message_value.value}
 message_decl     : message_name _DEFINED message_value
 
-//  ER evts = children(history_block)
+//  ER evts = [e for c in children(history_block) for e in c.events]
 //  ER for e in evts:
 //         e.procs = history_block.procs
 //         e.msgs  = history_block.msgs
 //  ER evts[0].seen_sends = {}
 //  ER for k in range(1, len(evts)):
 //         evts[k].seen_sends = evts[k-1].seen_sends | evts[k-1].sends
-history_block    : _HISTORY "{"  event* "}"
+//  Maybe blocks are flattened: their events join `evts` in source order
+//  and are checked exactly like top-level events.
+history_block    : _HISTORY "{"  (event | maybe_block)* "}"
+
+//  ER maybe_block.events = [e for c in children(maybe_block) for e in c.events]
+//  CC (none specific; events inside inherit the History block's rules)
+maybe_block      : _MAYBE "{" event* "}"
 
 // --------------------------------------------------------------------------
 // History events
@@ -147,6 +153,7 @@ IDENTIFIER : /[a-z][a-zA-Z0-9_]*/
 _PROCESSES  : "Processes"
 _MESSAGES   : "Messages"
 _HISTORY    : "History"
+_MAYBE      : "Maybe"
 _IN         : "::"
 _TO         : "->"
 _DEFINED    : ":="

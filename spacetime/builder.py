@@ -224,11 +224,32 @@ class AstBuilder(Interpreter):
     def history_block(self, tree: Tree) -> HistoryBlock:
         """Collect history events in source order.
 
-        No cross-event validation happens here: receives may still refer to
-        unknown or later events until semantics runs.
+        ``Maybe`` blocks are flattened: their events join the list at the
+        position where the block appeared. No cross-event validation happens
+        here: receives may still refer to unknown or later events until
+        semantics runs.
         """
-        events = [self.visit(child) for child in tree.children]
+        events: list[SendEvent | RecvEvent] = []
+        for child in tree.children:
+            result = self.visit(child)
+            if isinstance(result, list):
+                events.extend(result)
+            else:
+                events.append(result)
         return HistoryBlock(events, _location_from_tree(tree))
+
+    def maybe_block(self, tree: Tree) -> list[SendEvent | RecvEvent]:
+        """Unwrap the events of a ``Maybe`` block in source order.
+
+        Invariants:
+            The returned events behave exactly like top-level history
+            events; the ``Maybe`` wrapper itself is dropped.
+
+        Failure modes:
+            Same as the wrapped ``send_event``/``recv_event`` rules.
+            Distinguishing optional events in semantics is still TODO.
+        """
+        return [self.visit(child) for child in tree.children]
 
     def process_declaration(self, tree: Tree) -> Ident:
         """Return a declared process name with its location."""
