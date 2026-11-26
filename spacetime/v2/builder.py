@@ -17,6 +17,8 @@ from dataclasses import dataclass
 from lark import Token, Tree
 from lark.visitors import Interpreter
 
+import networkx as nx
+
 from ..errors import SemanticError
 from .ast import (
     Ast,
